@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Platform Navigation</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="login-page">
+    <div class="language-selector">
+        <button class="language-btn" id="language-btn">
+            <span id="current-language">English</span>
+        </button>
+        <div class="language-dropdown" id="language-dropdown">
+            <div class="language-option" data-lang="en">English</div>
+            <div class="language-option" data-lang="tr">Türkçe</div>
+            <div class="language-option" data-lang="fr">Français</div>
+            <div class="language-option" data-lang="ru">Русский</div>
+            <div class="language-option" data-lang="ar">العربية</div>
+        </div>
+    </div>
+    <div class="container">
+        <main>
+            <div class="login-container">
+                <div class="login-header">
+                    <div class="logo" style="display: flex; justify-content: center; margin-bottom: 18px;">
+                        <img src="img/fiu9.jpg" alt="Logo" style="height: 48px;">
+                    </div>
+                    <h2 data-translate="welcome">Welcome to Final Global</h2>
+                    <p data-translate="sign-in-continue">Sign in to continue to your account</p>
+                </div>
+                
+                <form id="login-form" class="login-form">
+                    <div class="form-group">
+                        <label for="username" data-translate="email">Username</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="username" name="username" placeholder="Enter your username" data-translate="enter-username" required>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password" data-translate="password">Password</label>
+                        <div class="input-wrapper">
+                            <input type="password" id="password" name="password" placeholder="Enter your password" data-translate="enter-password" required>
+                        </div>
+                    </div>
+                    
+
+
+                    
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary" data-translate="sign-in">Sign In</button>
+                    </div>
+                    
+                    <div id="error-message" class="error-message"></div>
+                </form>
+                
+
+            </div>
+        </main>
+
+        <footer>
+            <p data-translate="copyright">&copy; 2025 Project Navigation System</p>
+        </footer>
+    </div>
+
+    <script src="js/login.js"></script>
+    <script src="js/language.js?v=20250751"></script>
+    <link rel="stylesheet" href="css/styles.css?v=20250749">
+
+</body>
+</html>
