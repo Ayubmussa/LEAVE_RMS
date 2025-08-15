@@ -1,10 +1,10 @@
-# LEAVE RMS - Resource Management System
+# Final Global System
 
 A comprehensive web-based platform integration system that provides unified access to multiple platforms and administrative features. Built with HTML/CSS/JavaScript frontend, PHP backend, and MySQL database.
 
 ## 🎯 Overview
 
-LEAVE RMS serves as a central hub for university students and staff to access multiple platforms through a single, unified interface. The system includes comprehensive administrative features for managing announcements, dining menus, user accounts, and system configuration.
+Final Global System serves as a central hub for university students and staff to access multiple platforms through a single, unified interface. The system includes comprehensive administrative features for managing announcements, dining menus, user accounts, and system configuration.
 
 ## 📁 Project Structure
 
@@ -187,11 +187,6 @@ VALUES ('admin', 'hashed_password', 'admin@example.com', 'super_admin');
 
 ## 📊 System Requirements
 
-### Minimum Requirements
-- **PHP**: 7.4+
-- **MySQL**: 5.7+
-- **Memory**: 128MB RAM
-- **Storage**: 100MB disk space
 
 ### Recommended Requirements
 - **PHP**: 8.0+

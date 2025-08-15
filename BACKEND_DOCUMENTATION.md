@@ -1,4 +1,4 @@
-# LEAVE RMS Backend Documentation
+# Final Global System Backend Documentation
 
 
 
@@ -25,7 +25,7 @@
 
 ## 🎯 Overview
 
-The **LEAVE RMS** (Resource Management System) backend is a PHP-based API system that serves as a central hub for integrating multiple  platforms. It provides authentication proxying, notification aggregation, session management, and administrative features across multiple platforms.
+The **Final Global System** backend is a PHP-based API system that serves as a central hub for integrating multiple  platforms. It provides authentication proxying, notification aggregation, session management, and administrative features.
 
 ### Core Components
 
@@ -512,7 +512,7 @@ Each sub-platform has:
 | **Name** | Bilingual: Turkish/English |
 | **Base URL** | Platform's base URL |
 | **Login Endpoint** | Authentication endpoint path |
-| **Notifications Endpoint** | Notifications retrieval endpoint |
+
 
 ---
 
@@ -633,7 +633,7 @@ The dining menu system allows administrators to create and manage daily meal sch
 - ✅ Menu content management
 
 #### User Display
-- ✅ Today's menu display
+- ✅ Today's and tomorrow's menu display
 - ✅ Meal time information
 - ✅ Clickable menu cards
 - ✅ Detailed modal view
@@ -679,8 +679,7 @@ The dining menu system allows administrators to create and manage daily meal sch
 #### Profile Management
 - ✅ Language preferences
 - ✅ Theme preferences
-- ✅ Session management
-- ✅ Account settings
+
 
 
 
