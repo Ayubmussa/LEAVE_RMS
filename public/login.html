@@ -2,10 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Platform Navigation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login - FINAL GLOBAL</title>
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+    /*
+     * Responsive mobile adjustments
+     * Ensures all containers, forms, and buttons are full width and scrollable on mobile
+     */
+    @media (max-width: 600px) {
+      html, body {
+        width: 100vw !important;
+        min-width: 0 !important;
+        max-width: 100vw !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+      }
+      .container, main, .login-container, .form-group, .btn, .btn-primary, .btn-logout, header, footer {
+        width: 100vw !important;
+        min-width: 0 !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        position: static !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      .btn, .btn-primary, .btn-logout {
+        width: 100% !important;
+        margin-bottom: 8px !important;
+      }
+    }
+    </style>
 </head>
 <body class="login-page">
     <div class="language-selector">
@@ -57,6 +90,7 @@
                 </form>
                 
 
+
             </div>
         </main>
 
@@ -65,9 +99,9 @@
         </footer>
     </div>
 
-    <script src="js/login.js"></script>
-    <script src="js/language.js?v=20250751"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20250749">
+    <script src="js/login.js?v=8"></script>
+    <script src="js/language.js?v=6"></script>
+    <link rel="stylesheet" href="css/styles.css?v=53">
 
 </body>
 </html>

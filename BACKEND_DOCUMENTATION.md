@@ -1,10 +1,6 @@
 # LEAVE RMS Backend Documentation
 
-> **Version:** 2.0  
-> **Last Updated:** 2024  
-> **Author:** System Administrator  
 
----
 
 ## 📋 Table of Contents
 
@@ -12,47 +8,55 @@
 2. [System Architecture](#system-architecture)
 3. [Database Configuration](#database-configuration)
 4. [API Endpoints](#api-endpoints)
-5. [LMS Sub-platforms Configuration](#lms-sub-platforms-configuration)
-6. [URL Rewriting System](#url-rewriting-system)
-7. [Notification System](#notification-system)
-8. [Error Handling and Logging](#error-handling-and-logging)
-9. [Security Considerations](#security-considerations)
-10. [Configuration and Deployment](#configuration-and-deployment)
-11. [Usage Examples](#usage-examples)
-12. [Troubleshooting](#troubleshooting)
+5. [Admin Panel System](#admin-panel-system)
+6. [LMS Sub-platforms Configuration](#lms-sub-platforms-configuration)
+7. [URL Rewriting System](#url-rewriting-system)
+8. [Notification System](#notification-system)
+9. [Announcements System](#announcements-system)
+10. [Dining Menu System](#dining-menu-system)
+11. [User Management System](#user-management-system)
+12. [Error Handling and Logging](#error-handling-and-logging)
+13. [Security Considerations](#security-considerations)
+14. [Configuration and Deployment](#configuration-and-deployment)
+15. [Usage Examples](#usage-examples)
+16. [Troubleshooting](#troubleshooting)
 
 ---
 
 ## 🎯 Overview
 
-The **LEAVE RMS** (Resource Management System) backend is a PHP-based API system that serves as a central hub for integrating multiple Learning Management System (LMS) platforms with a Leave Management System. It provides authentication proxying, notification aggregation, and session management across multiple platforms.
+The **LEAVE RMS** (Resource Management System) backend is a PHP-based API system that serves as a central hub for integrating multiple  platforms. It provides authentication proxying, notification aggregation, session management, and administrative features across multiple platforms.
 
 ### Core Components
 
 | Component | Purpose |
 |-----------|---------|
-| `api.php` | Main API handler that processes requests, manages proxying, and handles business logic |
-| `db_connection.php` | Handles database connection and configuration |
+| `api.php` | Main API handler for user-facing operations |
+| `admin_api.php` | Admin panel API handler for administrative operations |
+| `db_connection.php` | Handles database connection and core functions |
+| `rms_auth_bridge.php` | Authentication bridge for RMS system |
 
 ---
 
 ## 🏗️ System Architecture
 
-The system follows a **proxy-based architecture** where the API acts as an intermediary between the frontend and multiple backend systems (LMS platforms and Leave Management System). It handles authentication, session management, and URL rewriting to create a unified user experience across disparate systems.
+The system follows a **multi-tier architecture** with separate APIs for user and admin operations, unified authentication, and comprehensive administrative features.
 
 ```
 ┌─────────────┐    ┌─────────────────┐    ┌─────────────────────────────┐
-│   Frontend  │───▶│  PHP API API    ───▶│  Multiple LMS Platforms &  │
-│             │    │                 │    │      Leave System           │
+│   Frontend  │───▶│  PHP API Layer  ───▶│  Multiple Platforms         │
+│             │    │  (User + Admin) │    │                             │
 └─────────────┘    └─────────────────┘    └─────────────────────────────┘
 ```
 
 ### Architecture Benefits
 
 - ✅ **Unified Interface** - Single entry point for multiple systems
+- ✅ **Role-Based Access** - Separate user and admin interfaces
 - ✅ **Session Management** - Centralized authentication handling
 - ✅ **URL Rewriting** - Seamless navigation across platforms
 - ✅ **Notification Aggregation** - Combined notifications from all sources
+- ✅ **Administrative Control** - Comprehensive admin panel for system management
 
 ---
 
@@ -78,8 +82,11 @@ const DB_CONFIG = [
 | `createDatabaseConnection()` | Creates and returns a MySQLi database connection |
 | `sanitize_input()` | Sanitizes input data to prevent SQL injection |
 | `validate_user()` | Validates user credentials with multiple methods |
+| `validate_admin()` | Validates admin credentials |
 | `get_platforms()` | Retrieves all available platforms |
 | `get_notifications()` | Fetches user notifications |
+| `get_active_announcements()` | Fetches active announcements for users |
+| `get_todays_dining_menu()` | Fetches today's dining menu |
 | `save_platform_credentials()` | Stores platform-specific credentials |
 
 ### 3.2 Database Schema
@@ -91,7 +98,52 @@ CREATE TABLE users (
     username VARCHAR(30) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     email VARCHAR(50),
+    is_admin TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+#### Admins Table
+```sql
+CREATE TABLE admins (
+    id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100),
+    role ENUM('admin', 'super_admin') DEFAULT 'admin',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+#### Announcements Table
+```sql
+CREATE TABLE announcements (
+    id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    created_by INT(6) UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE SET NULL
+);
+```
+
+#### Dining Menu Table
+```sql
+CREATE TABLE dining_menu (
+    id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    date DATE NOT NULL,
+    breakfast_menu TEXT,
+    breakfast_start_time TIME,
+    breakfast_end_time TIME,
+    lunch_menu TEXT,
+    lunch_start_time TIME,
+    lunch_end_time TIME,
+    created_by INT(6) UNSIGNED,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE SET NULL
 );
 ```
 
@@ -103,19 +155,6 @@ CREATE TABLE platforms (
     description TEXT,
     url VARCHAR(255) NOT NULL,
     notifications_url VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-#### Notifications Table//Not needed anymore
-```sql
-CREATE TABLE notifications (
-    id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(30) NOT NULL,
-    platform VARCHAR(100) NOT NULL,
-    message TEXT NOT NULL,
-    url VARCHAR(255) NOT NULL,
-    status ENUM('unread','read') DEFAULT 'unread',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
@@ -132,117 +171,313 @@ CREATE TABLE platform_credentials (
     UNIQUE KEY unique_user_platform (username, platform)
 );
 ```
+#### Holidays & Days Off Table
+```sql
+ CREATE TABLE IF NOT EXISTS holidays_days_off (
+        id INT(6) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        date DATE NOT NULL UNIQUE,
+        year INT(4) NOT NULL,
+        day_of_week VARCHAR(20) NOT NULL,
+        holiday_name VARCHAR(255) NOT NULL,
+        type ENUM('holiday', 'weekend', 'closure', 'custom') NOT NULL DEFAULT 'holiday',
+        description TEXT,
+        is_recurring BOOLEAN DEFAULT FALSE,
+        created_by INT(6) UNSIGNED,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (created_by) REFERENCES admins(id) ON DELETE SET NULL,
+        INDEX idx_year (year),
+        INDEX idx_date (date),
+        INDEX idx_type (type)
+    );
+```
 
 ---
 
 ## 🔌 API Endpoints
 
-The main API file handles multiple endpoints through a single entry point with endpoint routing.
+The system uses two main API files: `api.php` for user operations and `admin_api.php` for administrative operations.
 
-### 4.1 Core Configuration
+### 4.1 User API (`api.php`)
 
-| Feature | Description |
-|---------|-------------|
-| **Session Management** | Starts session at the beginning of execution |
-| **Error Handling** | Configured to log errors to `php_errors.log` |
-| **CORS Headers** | Configured for cross-origin requests |
-| **Logging** | Comprehensive logging for debugging |
+#### 4.1.1 Authentication Endpoints
 
-### 4.2 Main Endpoints
+##### Login (`login`)
+- **Method:** POST
+- **Parameters:** `username`, `password`
+- **Functionality:** Unified login for both users and admins
+- **Response:** JSON with user/admin data and redirect information
 
-#### 4.2.1 LMS Sub-platform Proxy (`lms_subplatform_proxy`)
+##### User Validation (`validate_user`)
+- **Method:** GET
+- **Parameters:** `username`, `password`
+- **Functionality:** Validates user credentials
+- **Response:** JSON with validation result
 
-**Purpose:** Acts as a reverse proxy for multiple LMS platforms, handling authentication and URL rewriting.
+#### 4.1.2 Platform Management
 
-**Parameters:**
-- `username`: User identifier
-- `subplatform`: Name of the LMS sub-platform
-- `path`: Resource path to fetch
+##### Get Platforms (`platforms`)
+- **Method:** GET
+- **Functionality:** Retrieves all available platforms
+- **Response:** JSON with platform list
 
-**Functionality:**
-- ✅ Manages user sessions via cookie files
-- ✅ Handles authentication flow for LMS platforms
-- ✅ Rewrites URLs to maintain proxy session
-- ✅ Special handling for different resource types
+##### LMS Sub-platforms (`lms_subplatforms`)
+- **Method:** GET
+- **Functionality:** Retrieves LMS sub-platform configuration
+- **Response:** JSON with sub-platform list
 
-**Resource Type Handling:**
+##### LMS Direct Link (`lms_subplatform_direct_link`)
+- **Method:** GET
+- **Parameters:** `username`, `subplatform`
+- **Functionality:** Generates direct access links for LMS platforms
+- **Response:** JSON with access URL
 
-| Resource Type | Handling |
-|---------------|----------|
-| HTML | Extensive URL rewriting |
-| CSS/JS | Path rewriting to maintain functionality |
-| Fonts | Special proxy endpoint (`lms_font_proxy`) |
-| AJAX requests | Special handling with appropriate headers |
+#### 4.1.3 Proxy Endpoints
 
-#### 4.2.2 LMS Font Proxy (`lms_font_proxy`)
+##### LMS Sub-platform Proxy (`lms_subplatform_proxy`)
+- **Method:** GET
+- **Parameters:** `username`, `subplatform`, `path`
+- **Functionality:** Proxies requests to LMS platforms
+- **Response:** Proxied content with URL rewriting
 
-**Purpose:** Specialized proxy for font resources to handle CORS and path issues.
+##### LMS Font Proxy (`lms_font_proxy`)
+- **Method:** GET
+- **Parameters:** `username`, `subplatform`, `path`
+- **Functionality:** Proxies font resources
+- **Response:** Font files with proper headers
 
-**Parameters:**
-- `username`: User identifier
-- `subplatform`: Name of the LMS sub-platform
-- `path`: Font resource path
+##### Leave Portal Proxy (`leave_portal_proxy`)
+- **Method:** GET
+- **Parameters:** `username`, `page`
+- **Functionality:** Proxies leave portal requests
+- **Response:** Proxied content
 
-**Functionality:**
-- ✅ Handles font requests (woff, woff2, ttf, eot, otf)
-- ✅ Proper content-type headers for font resources
-- ✅ Path normalization and encoding
+#### 4.1.4 Content Endpoints
 
-#### 4.2.3 RMS Dashboard Proxy (`rms_dashboard_proxy`)
+##### Announcements (`announcements`)
+- **Method:** GET
+- **Functionality:** Retrieves active announcements for users
+- **Response:** JSON with announcement list
 
-**Purpose:** Proxy for the Leave Management System dashboard.
+##### Dining Menu Today (`dining-menu-today`)
+- **Method:** GET
+- **Functionality:** Retrieves today's dining menu
+- **Response:** JSON with dining menu data
 
-**Parameters:**
-- `username`: User identifier
-- `path`: Resource path to fetch
-
-**Functionality:**
-- ✅ Similar to LMS proxy but tailored for RMS system
-- ✅ URL rewriting specific to RMS application structure
-- ✅ Session management for RMS authentication
-
-#### 4.2.4 Leave Portal Proxy (`leave_portal_proxy`)
-
-**Purpose:** Proxy for the Leave and Absence management portal.
-
-**Parameters:**
-- `username`: User identifier
-- `page`: Page to fetch
-
-**Functionality:**
-- ✅ Specialized handling for leave management system
-- ✅ Notification extraction from portal responses
-
-#### 4.2.5 Notification Management
-
-##### Get Notifications
-- Automatically aggregated from all connected platforms
-- No direct endpoint - integrated into page responses
+##### Notifications (`notifications`)
+- **Method:** GET
+- **Parameters:** `username`
+- **Functionality:** Retrieves user notifications
+- **Response:** JSON with notification list
 
 ##### Delete Notification (`delete_notification`)
-- **Method:** POST with JSON body
+- **Method:** POST
 - **Parameters:** `{"id": notification_id}`
-- **Restriction:** Only notifications with platform "Platform Navigation" can be deleted
+- **Functionality:** Deletes user notification
 - **Response:** JSON with success status
 
-### 4.3 Authentication Flow
+### 4.2 Admin API (`admin_api.php`)
 
-The system implements a sophisticated authentication flow:
+#### 4.2.1 Authentication
 
-#### Initial Authentication
-- ✅ Uses stored credentials from database (`get_platform_credentials()`)
-- ✅ Simulates browser login with proper headers and cookies
-- ✅ Manages session cookies in `/cookies/` directory
+##### Admin Login (`admin-login`)
+- **Method:** POST
+- **Parameters:** `username`, `password`
+- **Functionality:** Authenticates admin users
+- **Response:** JSON with admin data
 
-#### Session Maintenance
-- ✅ Cookie files named as `[username]_[host].txt`
-- ✅ Automatic re-authentication when session expires
-- ✅ Detection of login redirects to trigger re-authentication
+##### Validate Admin (`validate-admin`)
+- **Method:** GET
+- **Parameters:** `username`, `password`
+- **Functionality:** Validates admin credentials
+- **Response:** JSON with validation result
 
-#### Multi-Platform Support
-- ✅ Handles authentication for multiple LMS sub-platforms
-- ✅ Configurable login endpoints for each platform
-- ✅ Special handling for platform-specific requirements
+#### 4.2.2 Dashboard Management
+
+##### Dashboard Statistics (`dashboard-stats`)
+- **Method:** GET
+- **Functionality:** Retrieves dashboard statistics
+- **Response:** JSON with user count, admin count, platform count
+
+##### Get Admins (`admin-list`)
+- **Method:** GET
+- **Functionality:** Retrieves admin list (filtered by role)
+- **Response:** JSON with admin list
+
+##### Get Users (`users-list`)
+- **Method:** GET
+- **Functionality:** Retrieves user list with admin status
+- **Response:** JSON with user list
+
+##### Get Platforms (`platforms-list`)
+- **Method:** GET
+- **Functionality:** Retrieves platform list
+- **Response:** JSON with platform list
+
+#### 4.2.3 Admin Management
+
+##### Create Admin (`admin-create`)
+- **Method:** POST
+- **Parameters:** `username`, `email`, `password`, `role`
+- **Functionality:** Creates new admin account
+- **Response:** JSON with success status
+
+##### Update Admin (`admin-update`)
+- **Method:** POST
+- **Parameters:** `id`, `username`, `email`, `role`
+- **Functionality:** Updates admin account
+- **Response:** JSON with success status
+
+##### Delete Admin (`admin-delete`)
+- **Method:** POST
+- **Parameters:** `id`
+- **Functionality:** Deletes admin account
+- **Response:** JSON with success status
+
+##### Change Admin Password (`admin-change-password`)
+- **Method:** POST
+- **Parameters:** `id`, `new_password`
+- **Functionality:** Changes admin password
+- **Response:** JSON with success status
+
+##### Get Admin by Username (`admin-by-username`)
+- **Method:** GET
+- **Parameters:** `username`
+- **Functionality:** Retrieves admin by username
+- **Response:** JSON with admin data
+
+#### 4.2.4 User Management
+
+##### Promote User (`promote-user`)
+- **Method:** POST
+- **Parameters:** `username`
+- **Functionality:** Promotes user to admin role
+- **Response:** JSON with success status
+
+##### Demote User (`demote-user`)
+- **Method:** POST
+- **Parameters:** `username`
+- **Functionality:** Demotes admin back to user role
+- **Response:** JSON with success status
+
+#### 4.2.5 Announcements Management
+
+##### Get Announcements (`announcements-list`)
+- **Method:** GET
+- **Functionality:** Retrieves all announcements
+- **Response:** JSON with announcement list
+
+##### Get Announcement (`announcement-get`)
+- **Method:** GET
+- **Parameters:** `id`
+- **Functionality:** Retrieves specific announcement
+- **Response:** JSON with announcement data
+
+##### Create Announcement (`announcement-create`)
+- **Method:** POST
+- **Parameters:** `title`, `content`
+- **Functionality:** Creates new announcement
+- **Response:** JSON with success status
+
+##### Update Announcement (`announcement-update`)
+- **Method:** POST
+- **Parameters:** `id`, `title`, `content`
+- **Functionality:** Updates announcement
+- **Response:** JSON with success status
+
+##### Delete Announcement (`announcement-delete`)
+- **Method:** POST
+- **Parameters:** `id`
+- **Functionality:** Deletes announcement
+- **Response:** JSON with success status
+
+#### 4.2.6 Dining Menu Management
+
+##### Get Dining Menus (`dining-menu-list`)
+- **Method:** GET
+- **Functionality:** Retrieves all dining menus
+- **Response:** JSON with dining menu list
+
+##### Get Dining Menu (`dining-menu-get`)
+- **Method:** GET
+- **Parameters:** `id`
+- **Functionality:** Retrieves specific dining menu
+- **Response:** JSON with dining menu data
+
+##### Get Today's Dining Menu (`dining-menu-today`)
+- **Method:** GET
+- **Functionality:** Retrieves today's dining menu
+- **Response:** JSON with dining menu data
+
+##### Create Dining Menu (`dining-menu-create`)
+- **Method:** POST
+- **Parameters:** `date`, `breakfast_menu`, `breakfast_start_time`, `breakfast_end_time`, `lunch_menu`, `lunch_start_time`, `lunch_end_time`
+- **Functionality:** Creates new dining menu
+- **Response:** JSON with success status
+
+##### Update Dining Menu (`dining-menu-update`)
+- **Method:** POST
+- **Parameters:** `id`, `date`, `breakfast_menu`, `breakfast_start_time`, `breakfast_end_time`, `lunch_menu`, `lunch_start_time`, `lunch_end_time`
+- **Functionality:** Updates dining menu
+- **Response:** JSON with success status
+
+##### Delete Dining Menu (`dining-menu-delete`)
+- **Method:** POST
+- **Parameters:** `id`
+- **Functionality:** Deletes dining menu
+- **Response:** JSON with success status
+
+---
+
+## 👨‍💼 Admin Panel System
+
+### 5.1 Role-Based Access Control (RBAC)
+
+The system implements a two-tier admin system:
+
+#### Admin Roles
+- **`admin`**: Regular admin with limited permissions
+- **`super_admin`**: Super admin with full system access
+
+#### Permission Matrix
+
+| Feature | Admin | Super Admin |
+|---------|-------|-------------|
+| Dashboard Statistics | ✅ | ✅ |
+| Announcements Management | ✅ | ✅ |
+| Dining Menu Management | ✅ | ✅ |
+| Admin Management | ❌ | ✅ |
+| User Promotion/Demotion | ❌ | ✅ |
+| System Configuration | ❌ | ✅ |
+
+### 5.2 Admin Panel Features
+
+#### Dashboard
+- Real-time statistics (users, admins, platforms)
+- Quick access to management functions
+- System health monitoring
+
+#### Announcements Management
+- Create, edit, delete announcements
+- Rich text content support
+- Date tracking and management
+
+#### Dining Menu Management
+- Daily menu creation and editing
+- Breakfast and lunch scheduling
+- Time-based meal planning
+
+#### Admin Management (Super Admin Only)
+- Create new admin accounts
+- Edit existing admin details
+- Delete admin accounts
+- Role assignment and management
+
+#### User Management (Super Admin Only)
+- View all system users
+- Promote users to admin role
+- Demote admins back to user role
+- User status monitoring
 
 ---
 
@@ -285,7 +520,7 @@ Each sub-platform has:
 
 A critical component of the proxy system is the comprehensive URL rewriting:
 
-### 6.1 HTML Content Rewriting
+### 7.1 HTML Content Rewriting
 
 The system performs multiple regex-based rewrites on HTML content:
 
@@ -311,7 +546,7 @@ preg_replace_callback('/<form\s+[^>]*action\s*=\s*["\']([^"\']*)["\'][^>]*>/i', 
 - ✅ Less aggressive rewriting to avoid breaking code
 - ✅ Focuses on resource references only
 
-### 6.2 Special Handling for Resource Types
+### 7.2 Special Handling for Resource Types
 
 | Resource Type | Handling |
 |---------------|----------|
@@ -328,9 +563,7 @@ preg_replace_callback('/<form\s+[^>]*action\s*=\s*["\']([^"\']*)["\'][^>]*>/i', 
 
 The system aggregates notifications from multiple platforms:
 
-### 7.1 Notification Sources
-
-
+### 8.1 Notification Sources
 
 #### Leave and Absence System
 - ✅ Special handling for leave portal notifications
@@ -340,7 +573,7 @@ The system aggregates notifications from multiple platforms:
 - ✅ System-generated notifications
 - ✅ Can be deleted through API
 
-### 7.2 Notification Processing
+### 8.2 Notification Processing
 
 #### Extraction
 - ✅ HTML parsing of notification endpoints
@@ -358,9 +591,102 @@ The system aggregates notifications from multiple platforms:
 
 ---
 
+## 📢 Announcements System
+
+### 9.1 System Overview
+
+The announcements system allows administrators to create and manage system-wide announcements visible to all users.
+
+### 9.2 Features
+
+#### Announcement Management
+- ✅ Create announcements with title and content
+- ✅ Edit existing announcements
+- ✅ Delete announcements
+- ✅ Date tracking and management
+
+#### User Display
+- ✅ Real-time announcement display
+- ✅ Clickable announcement cards
+- ✅ Detailed modal view
+- ✅ Multi-language support
+
+#### Content Management
+- ✅ Rich text content support
+- ✅ Author tracking
+- ✅ Creation and update timestamps
+
+---
+
+## 🍽️ Dining Menu System
+
+### 10.1 System Overview
+
+The dining menu system allows administrators to create and manage daily meal schedules and menus.
+
+### 10.2 Features
+
+#### Menu Management
+- ✅ Daily menu creation and editing
+- ✅ Breakfast and lunch scheduling
+- ✅ Time-based meal planning
+- ✅ Menu content management
+
+#### User Display
+- ✅ Today's menu display
+- ✅ Meal time information
+- ✅ Clickable menu cards
+- ✅ Detailed modal view
+- ✅ Multi-language support
+
+#### Content Structure
+- ✅ Breakfast menu and times
+- ✅ Lunch menu and times
+- ✅ Date-based organization
+- ✅ Author tracking
+
+---
+
+## 👥 User Management System
+
+### 11.1 User Types
+
+#### Regular Users
+- ✅ Access to platform integration
+- ✅ View announcements and dining menu
+- ✅ Receive notifications
+- ✅ Language and theme preferences
+
+#### Admin Users
+- ✅ All regular user features
+- ✅ Access to admin panel
+- ✅ Management capabilities based on role
+
+#### Super Admin Users
+- ✅ All admin features
+- ✅ Full system administration
+- ✅ User promotion/demotion
+- ✅ Admin account management
+
+### 11.2 User Features
+
+#### Authentication
+- ✅ Unified login system
+- ✅ Session management
+- ✅ Role-based access control
+- ✅ Secure credential storage
+
+#### Profile Management
+- ✅ Language preferences
+- ✅ Theme preferences
+- ✅ Session management
+- ✅ Account settings
+
+
+
 ## ⚠️ Error Handling and Logging
 
-### 8.1 Error Types Handled
+### 12.1 Error Types Handled
 
 | Error Type | Description |
 |------------|-------------|
@@ -370,8 +696,10 @@ The system aggregates notifications from multiple platforms:
 | Resource not found | 404 handling for missing resources |
 | Invalid parameters | Parameter validation errors |
 | Proxy connection issues | Network connectivity problems |
+| Permission errors | Role-based access violations |
+| API endpoint errors | Invalid endpoint requests |
 
-### 8.2 Logging System
+### 12.2 Logging System
 
 All significant operations logged to `php_errors.log`:
 
@@ -380,44 +708,52 @@ All significant operations logged to `php_errors.log`:
   - Authentication attempts
   - Proxy requests/responses
   - URL rewriting operations
+  - Admin operations
   - Error conditions
 
 **Example log entry:**
 ```
-[2023-10-05 14:30:22] LMS Sub-platform Direct Link request for: 
-Üniversite Ortak/University Common, user: jsmith
+[2025-01-15 14:30:22] Admin login attempt for user: admin
+[2025-01-15 14:30:23] Announcement created by admin ID: 1
+[2025-01-15 14:30:24] Dining menu updated for date: 2025-01-15
 ```
 
 ---
 
 ## 🔒 Security Considerations
 
-### 9.1 Implemented Protections
+### 13.1 Implemented Protections
 
 | Protection | Description |
 |------------|-------------|
 | **Input Validation** | Parameters are checked before use |
 | **Session Management** | Secure cookie handling |
+| **Role-Based Access** | Permission-based feature access |
 | **Error Handling** | No sensitive information exposed to clients |
 | **Content-Type Headers** | Properly set for all responses |
 | **CORS Configuration** | Controlled cross-origin access |
+| **SQL Injection Prevention** | Prepared statements and input sanitization |
+| **XSS Prevention** | Output encoding and validation |
 
-### 9.2 Security Notes
+### 13.2 Security Notes
 
 - ✅ Credentials are stored encrypted in the database
 - ✅ Session cookies are stored server-side, not exposed to client
 - ✅ No direct database access from client-side
-- ✅ Special handling for sensitive operations (e.g., notification deletion requires platform check)
+- ✅ Special handling for sensitive operations
+- ✅ Role-based access control for admin functions
+- ✅ Input sanitization for all user inputs
+- ✅ Secure password handling and storage
 
 ---
 
 ## ⚙️ Configuration and Deployment
 
-### 10.1 Required Configuration
+### 14.1 Required Configuration
 
 #### Database
 - ✅ Update `DB_CONFIG` in `db_connection.php` with proper credentials
-- ✅ Create required tables (notifications, platform_credentials)
+- ✅ Create required tables (users, admins, announcements, dining_menu, platforms, platform_credentials)
 
 #### Cookie Directory
 - ✅ Create `cookies/` directory with proper permissions
@@ -427,23 +763,77 @@ All significant operations logged to `php_errors.log`:
 - ✅ Ensure `php_errors.log` is writable
 - ✅ Configure log rotation for production
 
-### 10.2 Deployment Requirements
+#### Admin Setup
+- ✅ Create initial super admin account
+- ✅ Configure admin roles and permissions
+- ✅ Set up announcement and dining menu defaults
 
-| Requirement | Version/Details |
-|-------------|----------------|
-| PHP | 7.4+ (based on code patterns) |
-| Database | MySQL/MariaDB |
-| Extensions | cURL extension (for proxy functionality) |
-| Sessions | Session support enabled |
-| Permissions | Proper directory permissions |
+
+
+
+## 📖 Usage Examples
+
+### 15.1 User Authentication
+
+```php
+// Login request
+POST /database/api.php?endpoint=login
+{
+    "username": "user123",
+    "password": "password123"
+}
+
+// Response
+{
+    "success": true,
+    "user": {
+        "id": 1,
+        "username": "user123",
+        "email": "user@example.com",
+        "is_admin": 0
+    },
+    "redirect": "index.html"
+}
+```
+
+### 15.2 Admin Operations
+
+```php
+// Create announcement
+POST /database/admin_api.php?endpoint=announcement-create
+{
+    "title": "System Maintenance",
+    "content": "Scheduled maintenance on Sunday..."
+}
+
+// Create dining menu
+POST /database/admin_api.php?endpoint=dining-menu-create
+{
+    "date": "2025-01-20",
+    "breakfast_menu": "Eggs, toast, coffee",
+    "breakfast_start_time": "07:00:00",
+    "breakfast_end_time": "09:00:00",
+    "lunch_menu": "Chicken, rice, vegetables",
+    "lunch_start_time": "12:00:00",
+    "lunch_end_time": "14:00:00"
+}
+```
+
+### 15.3 Platform Integration
+
+```php
+// Get platforms
+GET /database/api.php?endpoint=platforms
+
+// LMS direct access
+GET /database/api.php?endpoint=lms_subplatform_direct_link&username=user123&subplatform=University%20Common
+```
 
 ---
 
-
-
 ## 🔧 Troubleshooting
 
-### Common Issues and Solutions
+### 16.1 Common Issues and Solutions
 
 #### Authentication Failures
 **Symptoms:**
@@ -454,6 +844,26 @@ All significant operations logged to `php_errors.log`:
 - ✅ Check `php_errors.log` for authentication details
 - ✅ Verify credentials in database
 - ✅ Ensure cookie directory is writable
+
+#### Admin Panel Issues
+**Symptoms:**
+- Admin cannot access admin panel
+- Permission errors
+
+**Solutions:**
+- ✅ Verify admin role in database
+- ✅ Check admin session validity
+- ✅ Review role-based access permissions
+
+#### Announcement/Dining Menu Issues
+**Symptoms:**
+- Content not displaying
+- Creation/editing failures
+
+**Solutions:**
+- ✅ Check database table structure
+- ✅ Verify admin permissions
+- ✅ Review API endpoint responses
 
 #### Broken Resources (CSS/JS)
 **Symptoms:**
@@ -489,23 +899,17 @@ All significant operations logged to `php_errors.log`:
 
 ## 🎯 Conclusion
 
-The **LEAVE RMS** backend provides a sophisticated integration layer between multiple LMS platforms and a leave management system. Its proxy-based architecture, comprehensive URL rewriting, and notification aggregation create a unified user experience while maintaining compatibility with disparate backend systems.
+The **LEAVE RMS** backend provides a comprehensive integration layer between multiple LMS platforms and a leave management system. Its multi-tier architecture, role-based access control, comprehensive administrative features, and robust proxy system create a unified user experience while maintaining compatibility with disparate backend systems.
 
 ### Key Features
 
 - ✅ **Extensible Design** - New LMS platforms can be added through configuration
+- ✅ **Role-Based Access** - Comprehensive admin and super admin roles
+- ✅ **Content Management** - Announcements and dining menu systems
+- ✅ **User Management** - Promotion/demotion and role management
 - ✅ **Robust Error Handling** - Comprehensive logging for maintenance and troubleshooting
 - ✅ **Security Focused** - Multiple layers of protection and validation
 - ✅ **Performance Optimized** - Efficient caching and session management
 - ✅ **User Friendly** - Seamless navigation across multiple platforms
-
-### Future Enhancements
-
-- 🔄 **API Rate Limiting** - Prevent abuse and ensure fair usage
-- 🔄 **Advanced Caching** - Improve performance for frequently accessed resources
-- 🔄 **Real-time Notifications** - WebSocket support for live updates
-- 🔄 **Analytics Dashboard** - Usage statistics and monitoring
-- 🔄 **Multi-language Support** - Internationalization for global users
-
----
+- ✅ **Multi-language Support** - Internationalization for global users
 

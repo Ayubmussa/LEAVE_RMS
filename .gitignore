@@ -1,3 +1,6 @@
 /cookies
 /node_modules
 /package-lock.json
+/php_errors.log
+/LEAVE_RMS_Report.tex
+/uml_diagrams.md

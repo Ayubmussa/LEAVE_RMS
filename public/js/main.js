@@ -16,6 +16,93 @@ const API_BASE_URL = 'http://localhost/LEAVE_RMS/database/api.php';
 const SIS_URL = 'https://sis.final.edu.tr/';
 
 // =============================================================================
+// NOTIFICATION SYSTEM
+// =============================================================================
+
+/**
+ * Shows a custom notification message
+ * @param {string} message - The message to display
+ * @param {string} type - The type of notification ('success', 'error', 'warning', 'info')
+ */
+function showNotification(message, type = 'info') {
+    // Remove any existing notifications
+    const existingNotification = document.querySelector('.custom-notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `custom-notification ${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <span class="notification-message">${message}</span>
+            <button class="notification-close">&times;</button>
+        </div>
+    `;
+
+    // Add styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? '#d4edda' : type === 'error' ? '#f8d7da' : type === 'warning' ? '#fff3cd' : '#d1ecf1'};
+        color: ${type === 'success' ? '#155724' : type === 'error' ? '#721c24' : type === 'warning' ? '#856404' : '#0c5460'};
+        border: 1px solid ${type === 'success' ? '#c3e6cb' : type === 'error' ? '#f5c6cb' : type === 'warning' ? '#ffeaa7' : '#bee5eb'};
+        border-radius: 4px;
+        padding: 15px 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        max-width: 400px;
+        animation: slideIn 0.3s ease-out;
+    `;
+
+    // Add animation styles
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .notification-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+        .notification-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: inherit;
+            padding: 0;
+            line-height: 1;
+        }
+        .notification-close:hover {
+            opacity: 0.7;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Add close functionality
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => {
+        notification.remove();
+    });
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+
+    // Add to page
+    document.body.appendChild(notification);
+}
+
+// =============================================================================
 // INITIALIZATION
 // =============================================================================
 
@@ -23,7 +110,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // DOM element references
     const elements = {
         loginSection: document.getElementById('login-section'),
+        sectionsContainer: document.getElementById('sections-container'),
         platformsSection: document.getElementById('platforms-section'),
+        announcementsSection: document.getElementById('announcements-section'),
+        diningMenuSection: document.getElementById('dining-menu-section'),
         usernameElement: document.getElementById('username'),
         logoutBtn: document.getElementById('logout-btn'),
         darkModeBtn: document.getElementById('dark-mode-btn'),
@@ -31,7 +121,38 @@ document.addEventListener('DOMContentLoaded', function() {
         userDropdownBtn: document.getElementById('user-dropdown-btn'),
         userDropdown: document.querySelector('.user-dropdown'),
         notificationList: document.getElementById('notification-list'),
-        platformsContainer: document.querySelector('.platforms-container')
+        platformsContainer: document.querySelector('.platforms-container'),
+        announcementsContainer: document.querySelector('.announcements-container'),
+        announcementsSlider: document.getElementById('announcements-slider'),
+        announcementsDots: document.getElementById('announcements-dots'),
+        announcementsPrevBtn: document.getElementById('announcements-prev-btn'),
+        announcementsNextBtn: document.getElementById('announcements-next-btn'),
+        diningMenuContainer: document.querySelector('.dining-menu-container'),
+        diningMenuSlider: document.getElementById('dining-menu-slider'),
+        diningMenuDots: document.getElementById('dining-menu-dots'),
+        diningPrevBtn: document.getElementById('dining-prev-btn'),
+        diningNextBtn: document.getElementById('dining-next-btn'),
+        notificationBtn: document.getElementById('notification-btn'),
+        notificationDropdown: document.getElementById('notification-dropdown-content'),
+        notificationBadge: document.getElementById('notification-badge')
+    };
+
+    // Dining menu slider state
+    let diningMenuState = {
+        currentSlide: 0,
+        totalSlides: 0,
+        slides: [],
+        touchStartX: 0,
+        touchEndX: 0
+    };
+
+    // Announcements slider state
+    let announcementsState = {
+        currentSlide: 0,
+        totalSlides: 0,
+        slides: [],
+        touchStartX: 0,
+        touchEndX: 0
     };
 
     // Initialize application state
@@ -64,6 +185,9 @@ document.addEventListener('DOMContentLoaded', function() {
         setupPlatformAccessHandler();
         setupUserDropdownHandler();
         setupLanguageChangeHandler();
+        setupNotificationDropdownHandler();
+        setupDiningMenuSlider();
+        setupAnnouncementsSlider();
     }
 
     /**
@@ -129,9 +253,38 @@ document.addEventListener('DOMContentLoaded', function() {
             updateGreeting();
             loadNotifications();
             loadPlatforms();
+            loadAnnouncements();
+            loadDiningMenu();
             updateNotificationHeader();
             console.log('Language change handling complete in main.js');
         });
+    }
+
+    /**
+     * Sets up notification dropdown handler
+     */
+    function setupNotificationDropdownHandler() {
+        console.log('Setting up notification dropdown handler');
+        console.log('Notification button:', elements.notificationBtn);
+        console.log('Notification dropdown:', elements.notificationDropdown);
+        
+        if (elements.notificationBtn && elements.notificationDropdown) {
+            elements.notificationBtn.addEventListener('click', function(e) {
+                console.log('Notification button clicked');
+                e.stopPropagation();
+                elements.notificationDropdown.classList.toggle('show');
+                console.log('Dropdown show class:', elements.notificationDropdown.classList.contains('show'));
+            });
+            
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!elements.notificationDropdown.contains(e.target) && !elements.notificationBtn.contains(e.target)) {
+                    elements.notificationDropdown.classList.remove('show');
+                }
+            });
+        } else {
+            console.error('Notification elements not found');
+        }
     }
 
     /**
@@ -183,7 +336,7 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function showLoggedInState(user) {
         elements.loginSection.classList.add('hidden');
-        elements.platformsSection.classList.remove('hidden');
+        elements.sectionsContainer.classList.remove('hidden');
         
         if (elements.usernameElement) {
             elements.usernameElement.textContent = `Welcome, ${user.username || 'User'}`;
@@ -193,8 +346,10 @@ document.addEventListener('DOMContentLoaded', function() {
             elements.logoutBtn.classList.remove('hidden');
         }
         
-        // Load notifications only if user is logged in
+        // Load notifications, announcements, and dining menu only if user is logged in
         loadNotifications();
+        loadAnnouncements();
+        loadDiningMenu();
     }
 
     /**
@@ -202,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     function showLoggedOutState() {
         elements.loginSection.classList.remove('hidden');
-        elements.platformsSection.classList.add('hidden');
+        elements.sectionsContainer.classList.add('hidden');
         
         if (elements.logoutBtn) {
             elements.logoutBtn.classList.add('hidden');
@@ -244,7 +399,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const user = getUserFromStorage();
         
         if (!user || !user.username) {
-            alert('Please log in first.');
+            showNotification('Please log in first.', 'warning');
             return;
         }
 
@@ -287,73 +442,38 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
-     * Handles RMS platform access
+     * Handles RMS platform access with bridge authentication
      * @param {HTMLElement} button - The clicked button
      * @param {Object} user - User object
      */
     function handleRMSAccess(button, user) {
         button.textContent = 'Authenticating...';
-        const proxyUrl = `${API_BASE_URL}?endpoint=rms_dashboard_proxy&username=${encodeURIComponent(user.username)}`;
-        window.open(proxyUrl, '_blank');
+        const bridgeUrl = `rms_auth_bridge.php?username=${encodeURIComponent(user.username)}&type=dashboard`;
+        window.open(bridgeUrl, '_blank');
         resetButtonState(button);
     }
 
     /**
-     * Handles Leave Portal platform access
+     * Handles Leave Portal platform access with bridge authentication
      * @param {HTMLElement} button - The clicked button
      * @param {Object} user - User object
      */
     function handleLeavePortalAccess(button, user) {
-        button.textContent = 'Opening...';
-        const proxyUrl = `${API_BASE_URL}?endpoint=leave_portal_proxy&username=${encodeURIComponent(user.username)}&page=Dashboard/adminDashboard.php`;
-        window.open(proxyUrl, '_blank');
-        resetButtonState(button);
-    }
+    button.textContent = 'Authenticating...';
+    // Use proxy for Leave Portal due to CSRF session requirements
+    const proxyUrl = `${API_BASE_URL}?endpoint=leave_portal_proxy&username=${encodeURIComponent(user.username)}`;
+    window.open(proxyUrl, '_blank');
+    resetButtonState(button);
+}
 
     /**
-     * Handles SIS platform access with CAPTCHA handling
+     * Handles SIS platform access - direct access only
      * @param {HTMLElement} button - The clicked button
      */
     function handleSISAccess(button) {
-        const user = getUserFromStorage();
-        
-        if (!user || !user.username) {
-            alert('Please log in first.');
-            return;
-        }
-        
-        setButtonLoadingState(button, 'Checking SIS...');
-        
-        fetch(`${API_BASE_URL}?endpoint=authenticate_platform`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                platform: 'SIS',
-                username: user.username
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.captcha_required) {
-                alert('SIS requires CAPTCHA verification. You will be redirected to the SIS login page where you can complete the CAPTCHA manually.');
-                window.open(SIS_URL, '_blank');
-            } else if (data.success) {
-                window.open(SIS_URL, '_blank');
-            } else {
-                console.log('SIS authentication failed, opening SIS directly');
-                window.open(SIS_URL, '_blank');
-            }
-        })
-        .catch(error => {
-            console.error('Error checking SIS authentication:', error);
-            window.open(SIS_URL, '_blank');
-        })
-        .finally(() => {
-            button.disabled = false;
-            button.innerHTML = `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`;
-        });
+        // Direct access to SIS without authentication
+        window.open(SIS_URL, '_blank');
+        resetButtonState(button);
     }
 
     /**
@@ -369,12 +489,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success && Array.isArray(data.subplatforms)) {
                     showLmsModal(data.subplatforms);
                 } else {
-                    alert('Failed to load LMS sub-platforms.');
+                    showNotification('Failed to load LMS sub-platforms.', 'error');
                 }
             })
             .catch(error => {
                 console.error('Error loading LMS sub-platforms:', error);
-                alert('Failed to load LMS sub-platforms.');
+                showNotification('Failed to load LMS sub-platforms.', 'error');
             })
             .finally(() => {
                 resetButtonState(button);
@@ -402,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         data-url='${sp.url}' 
                         data-login='${sp.login_endpoint}' 
                         data-notif='${sp.notifications_endpoint}'>
-                    Access
+                    ${getTranslation('access-platform')}
                 </button>
             `;
             list.appendChild(div);
@@ -459,7 +579,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const user = getUserFromStorage();
         
         if (!user || !user.username) {
-            alert('Please log in first.');
+            showNotification('Please log in first.', 'warning');
             return;
         }
         
@@ -468,29 +588,28 @@ document.addEventListener('DOMContentLoaded', function() {
         const subplatformCard = btn.closest('.lms-subplatform-card');
         const subplatformName = subplatformCard ? subplatformCard.querySelector('span').textContent : 'Unknown';
         
-        const params = new URLSearchParams({
-            endpoint: 'lms_subplatform_direct_link',
-            username: user.username,
-            subplatform: subplatformName
-        });
+        // Use server-side direct link for LMS (similar to RMS)
+        const directLinkUrl = `${API_BASE_URL}?endpoint=lms_subplatform_direct_link&username=${encodeURIComponent(user.username)}&subplatform=${encodeURIComponent(subplatformName)}`;
         
-        fetch(`${API_BASE_URL}?${params.toString()}`)
-            .then(res => res.json())
+        fetch(directLinkUrl)
+            .then(response => response.json())
             .then(data => {
                 if (data.success && data.url) {
                     window.open(data.url, '_blank');
                 } else {
-                    alert('Failed to generate LMS access link.');
+                    showNotification('Failed to access LMS: ' + (data.message || 'Unknown error'), 'error');
                 }
             })
             .catch(error => {
-                console.error('Error generating LMS access link:', error);
-                alert('Failed to generate LMS access link.');
-            })
-            .finally(() => {
-                btn.disabled = false;
-                btn.textContent = 'Access';
+                console.error('Error accessing LMS:', error);
+                showNotification('Failed to access LMS. Please try again.', 'error');
             });
+        
+        // Reset button state
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.textContent = getTranslation('access-platform');
+        }, 1000);
     }
 
     // =============================================================================
@@ -514,7 +633,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
+                console.log('Platforms data received:', data);
                 if (data.success && data.platforms && data.platforms.length > 0) {
+                    console.log('Creating platform cards for:', data.platforms.length, 'platforms');
                     data.platforms.forEach(platform => {
                         createPlatformCard(platform, elements.platformsContainer);
                     });
@@ -539,19 +660,62 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const { platformUrl, buttonClass, buttonText } = getPlatformButtonConfig(platform);
         
+        // Add direct access button for LMS and Leave and Absence platforms
+        const directAccessButton = platform.name === 'LMS' ? `
+            <a href="https://lms0.final.edu.tr/" 
+               class="btn btn-primary" 
+               target="_blank" 
+               style="margin-left: 10px; display: inline-block !important; visibility: visible !important;">
+                <span style="margin-right:6px;">\u{1F310}</span>${getTranslation('direct-access')}
+            </a>
+        ` : platform.name === 'Leave and Absence' ? `
+            <a href="https://leave.final.digital/" 
+               class="btn btn-primary" 
+               target="_blank" 
+               style="margin-left: 10px; display: inline-block !important; visibility: visible !important;">
+                <span style="margin-right:6px;">\u{1F310}</span>${getTranslation('direct-access')}
+            </a>
+        ` : '';
+        
+        console.log('Creating platform card for:', platform.name);
+        console.log('Is LMS platform?', platform.name === 'LMS');
+        console.log('Is Leave and Absence platform?', platform.name === 'Leave and Absence');
+        console.log('Direct access button HTML:', directAccessButton);
+        console.log('Full platform object:', platform);
+        
         platformCard.innerHTML = `
             <h3>${platform.name}</h3>
             <p>${platform.description}</p>
-            <a href="${platformUrl}" 
-               class="${buttonClass}" 
-               target="_blank" 
-               data-platform="${platform.name}" 
-               data-translate="access-platform">
-                ${buttonText}
-            </a>
+            <div class="btn-container">
+                <a href="${platformUrl}" 
+                   class="${buttonClass}" 
+                   target="_blank" 
+                   data-platform="${platform.name}" 
+                   data-translate="access-platform">
+                    ${buttonText}
+                </a>
+                ${directAccessButton}
+            </div>
         `;
         
         container.appendChild(platformCard);
+        
+        // Debug: Check if the direct access button is in the DOM
+        if (platform.name === 'LMS') {
+            const directAccessBtn = platformCard.querySelector('a[href="https://lms0.final.edu.tr/"]');
+            console.log('Direct access button found in DOM:', directAccessBtn);
+            if (directAccessBtn) {
+                console.log('Button text:', directAccessBtn.textContent);
+                console.log('Button styles:', window.getComputedStyle(directAccessBtn));
+            }
+        } else if (platform.name === 'Leave and Absence') {
+            const directAccessBtn = platformCard.querySelector('a[href="https://leave.final.digital/"]');
+            console.log('Leave and Absence direct access button found in DOM:', directAccessBtn);
+            if (directAccessBtn) {
+                console.log('Button text:', directAccessBtn.textContent);
+                console.log('Button styles:', window.getComputedStyle(directAccessBtn));
+            }
+        }
     }
 
     /**
@@ -562,12 +726,303 @@ document.addEventListener('DOMContentLoaded', function() {
     function getPlatformButtonConfig(platform) {
         const specialPlatforms = ['RMS', 'SIS', 'LMS', 'Leave and Absence'];
         const isSpecialPlatform = specialPlatforms.includes(platform.name);
-        
+        // Special case: SIS should be a direct link
+        if (platform.name === 'SIS') {
+            return {
+                platformUrl: SIS_URL,
+                buttonClass: 'btn btn-primary',
+                buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+            };
+        }
         return {
             platformUrl: isSpecialPlatform ? '#' : platform.url,
             buttonClass: isSpecialPlatform ? 'btn btn-primary access-platform-btn' : 'btn btn-primary',
             buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
         };
+    }
+
+    // =============================================================================
+    // ANNOUNCEMENTS MANAGEMENT
+    // =============================================================================
+
+    /**
+     * Loads announcements from the PHP API
+     */
+    function loadAnnouncements() {
+        if (!elements.announcementsSlider) {
+            console.error('Announcements slider not found');
+            return;
+        }
+
+        elements.announcementsSlider.innerHTML = '';
+
+        fetch(`${API_BASE_URL}?endpoint=announcements`)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to fetch announcements');
+                return response.json();
+            })
+            .then(data => {
+                console.log('Announcements data received:', data);
+                if (data.success && data.announcements && data.announcements.length > 0) {
+                    console.log('Creating announcement slides for:', data.announcements.length, 'announcements');
+                    
+                    announcementsState.slides = data.announcements;
+                    announcementsState.totalSlides = data.announcements.length;
+                    announcementsState.currentSlide = 0;
+
+                    data.announcements.forEach((announcement, index) => {
+                        const slideDiv = document.createElement('div');
+                        slideDiv.className = 'announcements-slide';
+                        createAnnouncementCard(announcement, slideDiv);
+                        elements.announcementsSlider.appendChild(slideDiv);
+                    });
+
+                    updateAnnouncementsNavigation();
+                    createAnnouncementsDots();
+                } else {
+                    elements.announcementsSlider.innerHTML = '<div class="announcements-slide"><p>No announcements found.</p></div>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading announcements:', error);
+                elements.announcementsSlider.innerHTML = '<div class="announcements-slide"><p>Error loading announcements.</p></div>';
+            });
+    }
+
+    /**
+     * Creates an announcement card element
+     * @param {Object} announcement - Announcement data
+     * @param {HTMLElement} container - Container to append the card to
+     */
+    function createAnnouncementCard(announcement, container) {
+        const announcementCard = document.createElement('div');
+        announcementCard.className = 'announcement-card';
+        
+        // Format the date with day name
+        const date = new Date(announcement.created_at);
+        const formattedDate = date.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        }) + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        announcementCard.innerHTML = `
+            <h3>${announcement.title}</h3>
+            <div class="announcement-date">${formattedDate}</div>
+        `;
+        
+        // Add click event to show full announcement
+        announcementCard.addEventListener('click', () => {
+            showAnnouncementModal(announcement);
+        });
+        
+        container.appendChild(announcementCard);
+    }
+
+    /**
+     * Shows announcement modal with full details
+     * @param {Object} announcement - Announcement data
+     */
+    function showAnnouncementModal(announcement) {
+        // Create modal HTML
+        const modalHTML = `
+            <div id="announcement-modal" class="modal" style="display:flex; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+                <div class="modal-content" style="background:#fff; border-radius:8px; max-width:600px; width:90%; max-height:80vh; margin:40px auto; padding:32px; position:relative; display:flex; flex-direction:column;">
+                    <button id="close-announcement-modal" style="position:absolute; top:12px; right:16px; font-size:24px; background:none; border:none; cursor:pointer;">&times;</button>
+                    <h2 style="margin-bottom:16px; flex-shrink:0;">${announcement.title}</h2>
+                    <div style="flex:1; overflow-y:auto; padding-right:8px;">
+                        <div style="font-size:12px; color:#888; margin-bottom:16px; font-style:italic;">
+                            ${new Date(announcement.created_at).toLocaleDateString() + ' ' + new Date(announcement.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </div>
+                        <div style="line-height:1.6; margin-bottom:16px;">
+                            ${announcement.content}
+                        </div>
+                        <div style="font-size:12px; color:#666; font-weight:500;">
+                            By: ${announcement.created_by || 'Administrator'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Setup close button
+        const closeBtn = document.getElementById('close-announcement-modal');
+        const modal = document.getElementById('announcement-modal');
+        
+        if (closeBtn) {
+            closeBtn.onclick = function() {
+                modal.remove();
+            };
+        }
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+
+    // =============================================================================
+    // DINING MENU MANAGEMENT
+    // =============================================================================
+
+    /**
+     * Loads dining menu from the PHP API
+     */
+    function loadDiningMenu() {
+        if (!elements.diningMenuSlider) {
+            console.error('Dining menu slider not found');
+            return;
+        }
+
+        elements.diningMenuSlider.innerHTML = '';
+
+		// Fetch dining menus for today and tomorrow only
+        const promises = [];
+		for (let i = 0; i < 2; i++) {
+            const date = new Date();
+            date.setDate(date.getDate() + i);
+            const dateStr = date.toISOString().split('T')[0];
+            
+            promises.push(
+                fetch(`${API_BASE_URL}?endpoint=dining-menu-today&date=${dateStr}`)
+                    .then(response => response.json())
+                    .then(data => ({ date: dateStr, data }))
+                    .catch(error => ({ date: dateStr, data: { success: false, error } }))
+            );
+        }
+
+        Promise.all(promises)
+            .then(results => {
+                const validMenus = results.filter(result => result.data.success && result.data.dining_menu);
+                
+                if (validMenus.length === 0) {
+                    elements.diningMenuSlider.innerHTML = '<div class="dining-menu-slide"><p>No dining menu available.</p></div>';
+                    return;
+                }
+
+                diningMenuState.slides = validMenus;
+                diningMenuState.totalSlides = validMenus.length;
+                diningMenuState.currentSlide = 0;
+
+                validMenus.forEach((menuData, index) => {
+                    const slideDiv = document.createElement('div');
+                    slideDiv.className = 'dining-menu-slide';
+                    createDiningMenuCard(menuData.data.dining_menu, slideDiv);
+                    elements.diningMenuSlider.appendChild(slideDiv);
+                });
+
+                updateDiningMenuNavigation();
+                createDiningMenuDots();
+            })
+            .catch(error => {
+                console.error('Error loading dining menus:', error);
+                elements.diningMenuSlider.innerHTML = '<div class="dining-menu-slide"><p>Error loading dining menu.</p></div>';
+            });
+    }
+
+    /**
+     * Creates a dining menu card element
+     * @param {Object} diningMenu - Dining menu data
+     * @param {HTMLElement} container - Container to append the card to
+     */
+    function createDiningMenuCard(diningMenu, container) {
+        const diningMenuCard = document.createElement('div');
+        diningMenuCard.className = 'dining-menu-card';
+        
+        // Format the date with day name
+        const date = new Date(diningMenu.date);
+        const formattedDate = date.toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        // Format times to show only hours and minutes
+        const formatTime = (timeString) => {
+            if (!timeString || timeString === 'N/A') return 'N/A';
+            return timeString.substring(0, 5); // Take only HH:MM part
+        };
+
+        diningMenuCard.innerHTML = `
+            <h3>${formattedDate}</h3>
+            <div class="meal-section">
+                <h4><i class="fas fa-sun" style="color: #c0392b; margin-right: 8px;"></i>Breakfast</h4>
+                <p>${diningMenu.breakfast_menu || 'No breakfast menu available'}</p>
+                <small>Time: ${formatTime(diningMenu.breakfast_start_time)} - ${formatTime(diningMenu.breakfast_end_time)}</small>
+            </div>
+            <div class="meal-section">
+                <h4><i class="fas fa-utensils" style="color: #c0392b; margin-right: 8px;"></i>Lunch</h4>
+                <p>${diningMenu.lunch_menu || 'No lunch menu available'}</p>
+                <small>Time: ${formatTime(diningMenu.lunch_start_time)} - ${formatTime(diningMenu.lunch_end_time)}</small>
+            </div>
+        `;
+        
+        // Add click event to show full dining menu details
+        diningMenuCard.addEventListener('click', () => {
+            showDiningMenuModal(diningMenu);
+        });
+        
+        container.appendChild(diningMenuCard);
+    }
+
+    /**
+     * Shows dining menu modal with full details
+     * @param {Object} diningMenu - Dining menu data
+     */
+    function showDiningMenuModal(diningMenu) {
+        // Create modal HTML
+        const modalHTML = `
+            <div id="dining-menu-modal" class="modal" style="display:flex; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+                <div class="modal-content" style="background:#fff; border-radius:8px; max-width:600px; width:90%; max-height:80vh; margin:40px auto; padding:32px; position:relative; display:flex; flex-direction:column;">
+                    <button id="close-dining-menu-modal" style="position:absolute; top:12px; right:16px; font-size:24px; background:none; border:none; cursor:pointer;">&times;</button>
+                    <h2 style="margin-bottom:16px; flex-shrink:0;">Dining Menu - ${new Date(diningMenu.date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            })}</h2>
+                                         <div style="flex:1; overflow-y:auto; padding-right:8px;">
+                         <div class="meal-section" style="margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid #eee;">
+                             <h3 style="color:#c0392b; margin-bottom:12px; font-size:18px;"><i class="fas fa-sun" style="color: #c0392b; margin-right: 8px;"></i>Breakfast</h3>
+                             <p style="line-height:1.6; margin-bottom:8px;">${diningMenu.breakfast_menu || 'No breakfast menu available'}</p>
+                             <small style="color:#888; font-style:italic;">Time: ${diningMenu.breakfast_start_time ? diningMenu.breakfast_start_time.substring(0, 5) : 'N/A'} - ${diningMenu.breakfast_end_time ? diningMenu.breakfast_end_time.substring(0, 5) : 'N/A'}</small>
+                         </div>
+                         <div class="meal-section">
+                             <h3 style="color:#c0392b; margin-bottom:12px; font-size:18px;"><i class="fas fa-utensils" style="color: #c0392b; margin-right: 8px;"></i>Lunch</h3>
+                             <p style="line-height:1.6; margin-bottom:8px;">${diningMenu.lunch_menu || 'No lunch menu available'}</p>
+                             <small style="color:#888; font-style:italic;">Time: ${diningMenu.lunch_start_time ? diningMenu.lunch_start_time.substring(0, 5) : 'N/A'} - ${diningMenu.lunch_end_time ? diningMenu.lunch_end_time.substring(0, 5) : 'N/A'}</small>
+                         </div>
+                     </div>
+                </div>
+            </div>
+        `;
+        
+        // Add modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Setup close button
+        const closeBtn = document.getElementById('close-dining-menu-modal');
+        const modal = document.getElementById('dining-menu-modal');
+        
+        if (closeBtn) {
+            closeBtn.onclick = function() {
+                modal.remove();
+            };
+        }
+        
+        // Close modal when clicking outside
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
     }
 
     // =============================================================================
@@ -583,78 +1038,49 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        elements.notificationList.innerHTML = `<p>${getTranslation('notifications-loading')}</p>`;
+        elements.notificationList.innerHTML = `<p class="no-notifications">${getTranslation('notifications-loading')}</p>`;
         
         const user = getUserFromStorage();
         if (!user || !user.username) {
-            elements.notificationList.innerHTML = `<p>${getTranslation('notifications-none')}</p>`;
+            elements.notificationList.innerHTML = `<p class="no-notifications">${getTranslation('notifications-none')}</p>`;
+            updateNotificationBadge(0);
             return;
-        }
-
-        // Display stored LMS notifications first
-        const lmsSubplatformNotifications = getStoredLmsNotifications();
-        if (lmsSubplatformNotifications.length > 0) {
-            displayStoredNotifications(lmsSubplatformNotifications);
         }
 
         // Fetch and display all notifications
         fetchAllNotifications(user.username)
             .then(allNotifications => {
-                handleFetchedNotifications(allNotifications, lmsSubplatformNotifications);
+                handleFetchedNotifications(allNotifications, []);
             })
             .catch((err) => {
                 console.error('Error fetching notifications:', err);
-                if (lmsSubplatformNotifications.length === 0) {
-                    elements.notificationList.innerHTML = `<p>${getTranslation('notifications-error')}</p>`;
-                }
+                elements.notificationList.innerHTML = `<p class="no-notifications">${getTranslation('notifications-error')}</p>`;
+                updateNotificationBadge(0);
             });
     }
 
-    /**
-     * Gets stored LMS notifications
-     * @returns {Array} Array of stored notifications
-     */
-    function getStoredLmsNotifications() {
-        return JSON.parse(localStorage.getItem('lms_subplatform_notifications') || '[]');
-    }
 
-    /**
-     * Displays stored notifications
-     * @param {Array} notifications - Array of notifications
-     */
-    function displayStoredNotifications(notifications) {
-        elements.notificationList.innerHTML = '';
-        notifications.forEach(notification => {
-            createNotificationCard(notification, elements.notificationList);
-        });
-        
-        // Clear the stored notifications after displaying them
-        localStorage.removeItem('lms_subplatform_notifications');
-    }
 
     /**
      * Handles fetched notifications
      * @param {Array} allNotifications - All fetched notifications
-     * @param {Array} storedNotifications - Previously stored notifications
+     * @param {Array} storedNotifications - Previously stored notifications (unused)
      */
     function handleFetchedNotifications(allNotifications, storedNotifications) {
-        if (allNotifications.length === 0 && storedNotifications.length === 0) {
-            elements.notificationList.innerHTML = `<p>${getTranslation('notifications-none')}</p>`;
+        if (allNotifications.length === 0) {
+            elements.notificationList.innerHTML = `<p class="no-notifications">${getTranslation('notifications-none')}</p>`;
+            updateNotificationBadge(0);
             return;
         }
         
-        if (storedNotifications.length > 0) {
-            // Append new notifications to existing ones
-            allNotifications.forEach(notification => {
-                createNotificationCard(notification, elements.notificationList);
-            });
-        } else {
-            // Replace loading message with all notifications
-            elements.notificationList.innerHTML = '';
-            allNotifications.forEach(notification => {
-                createNotificationCard(notification, elements.notificationList);
-            });
-        }
+        // Replace loading message with all notifications
+        elements.notificationList.innerHTML = '';
+        allNotifications.forEach(notification => {
+            createNotificationItem(notification, elements.notificationList);
+        });
+        
+        // Update notification badge
+        updateNotificationBadge(allNotifications.length);
     }
 
     /**
@@ -706,6 +1132,46 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
+     * Creates a notification item for the dropdown
+     * @param {Object} notification - Notification data
+     * @param {HTMLElement} container - Container to append the item to
+     */
+    function createNotificationItem(notification, container) {
+        const notifDiv = document.createElement('div');
+        notifDiv.className = 'notification-item';
+        
+        const notificationUrl = getNotificationUrl(notification);
+        const dateDisplay = getNotificationDateDisplay(notification);
+        
+        const itemHTML = `
+            <div class="notification-title">${notification.platform}</div>
+            <div class="notification-content">${notification.message}</div>
+            ${dateDisplay ? `<div class="notification-time">${notification.date}</div>` : ''}
+            <a href="${notificationUrl}" target="_blank" class="btn btn-primary" style="margin-top: 8px; font-size: 12px; padding: 4px 8px;">
+                ${getTranslation('Open')}
+            </a>
+        `;
+        
+        notifDiv.innerHTML = itemHTML;
+        container.appendChild(notifDiv);
+    }
+
+    /**
+     * Updates the notification badge count
+     * @param {number} count - Number of notifications
+     */
+    function updateNotificationBadge(count) {
+        if (elements.notificationBadge) {
+            if (count > 0) {
+                elements.notificationBadge.textContent = count > 99 ? '99+' : count.toString();
+                elements.notificationBadge.style.display = 'block';
+            } else {
+                elements.notificationBadge.style.display = 'none';
+            }
+        }
+    }
+
+    /**
      * Gets notification URL based on platform
      * @param {Object} notification - Notification object
      * @returns {string} Notification URL
@@ -715,10 +1181,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const user = getUserFromStorage();
         
         if (notification.platform === 'RMS' && user && user.username) {
-            notificationUrl = `${API_BASE_URL}?endpoint=rms_notifications_proxy&username=${encodeURIComponent(user.username)}`;
+            notificationUrl = `rms_auth_bridge.php?username=${encodeURIComponent(user.username)}&type=notifications&page=Dashboard/notifications.php`;
         } else if (notification.platform === 'Leave and Absence' && user && user.username) {
+            // Use proxy for Leave Portal notifications due to CSRF session requirements
             notificationUrl = `${API_BASE_URL}?endpoint=leave_portal_proxy&username=${encodeURIComponent(user.username)}&page=notifications/all_notifications.php`;
-        }
+                         } else if (notification.platform === 'LMS' && user && user.username) {
+                     // Use server-side direct link for LMS notifications
+                             const subplatformName = notification.subplatform || 'Unknown';
+                             notificationUrl = `${API_BASE_URL}?endpoint=lms_subplatform_direct_link&username=${encodeURIComponent(user.username)}&subplatform=${encodeURIComponent(subplatformName)}`;
+                         }
         
         return notificationUrl;
     }
@@ -845,4 +1316,291 @@ document.addEventListener('DOMContentLoaded', function() {
     // proxyLmsAjax('Üniversite Ortak/University Common', 'student1', 'webservice/rest/server.php?wsfunction=core_user_get_users_by_field&field=username&values[0]=student1')
     //     .then(response => response.json())
     //     .then(data => console.log('LMS API data:', data));
+    
+    // Make loadNotifications available globally for tour system
+    window.loadNotifications = loadNotifications;
+
+    // =============================================================================
+    // DINING MENU SLIDER FUNCTIONS
+    // =============================================================================
+
+    /**
+     * Sets up dining menu slider functionality
+     */
+    function setupDiningMenuSlider() {
+        if (elements.diningPrevBtn) {
+            elements.diningPrevBtn.addEventListener('click', () => {
+                navigateDiningMenu('prev');
+            });
+        }
+
+        if (elements.diningNextBtn) {
+            elements.diningNextBtn.addEventListener('click', () => {
+                navigateDiningMenu('next');
+            });
+        }
+
+        // Touch events for swipe
+        if (elements.diningMenuSlider) {
+            elements.diningMenuSlider.addEventListener('touchstart', handleTouchStart);
+            elements.diningMenuSlider.addEventListener('touchend', handleTouchEnd);
+        }
+    }
+
+    /**
+     * Handles touch start event
+     */
+    function handleTouchStart(e) {
+        diningMenuState.touchStartX = e.changedTouches[0].screenX;
+    }
+
+    /**
+     * Handles touch end event
+     */
+    function handleTouchEnd(e) {
+        diningMenuState.touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }
+
+    /**
+     * Handles swipe gesture
+     */
+    function handleSwipe() {
+        const swipeThreshold = 50;
+        const diff = diningMenuState.touchStartX - diningMenuState.touchEndX;
+
+        if (Math.abs(diff) > swipeThreshold) {
+            if (diff > 0) {
+                // Swipe left - next slide
+                navigateDiningMenu('next');
+            } else {
+                // Swipe right - previous slide
+                navigateDiningMenu('prev');
+            }
+        }
+    }
+
+    /**
+     * Navigates to previous or next dining menu slide
+     */
+    function navigateDiningMenu(direction) {
+        if (diningMenuState.totalSlides === 0) return;
+
+        if (direction === 'prev' && diningMenuState.currentSlide > 0) {
+            diningMenuState.currentSlide--;
+        } else if (direction === 'next' && diningMenuState.currentSlide < diningMenuState.totalSlides - 1) {
+            diningMenuState.currentSlide++;
+        }
+
+        updateDiningMenuSlider();
+        updateDiningMenuNavigation();
+        updateDiningMenuDots();
+    }
+
+    /**
+     * Updates the dining menu slider position
+     */
+    function updateDiningMenuSlider() {
+        if (elements.diningMenuSlider) {
+            const translateX = -diningMenuState.currentSlide * 100;
+            elements.diningMenuSlider.style.transform = `translateX(${translateX}%)`;
+        }
+    }
+
+    /**
+     * Updates dining menu navigation buttons
+     */
+    function updateDiningMenuNavigation() {
+        if (elements.diningPrevBtn) {
+            elements.diningPrevBtn.style.display = diningMenuState.currentSlide > 0 ? 'flex' : 'none';
+            elements.diningPrevBtn.disabled = diningMenuState.currentSlide === 0;
+        }
+
+        if (elements.diningNextBtn) {
+            elements.diningNextBtn.style.display = diningMenuState.currentSlide < diningMenuState.totalSlides - 1 ? 'flex' : 'none';
+            elements.diningNextBtn.disabled = diningMenuState.currentSlide === diningMenuState.totalSlides - 1;
+        }
+    }
+
+    /**
+     * Creates navigation dots for dining menu
+     */
+    function createDiningMenuDots() {
+        if (!elements.diningMenuDots) return;
+
+        elements.diningMenuDots.innerHTML = '';
+        
+        for (let i = 0; i < diningMenuState.totalSlides; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'dining-menu-dot';
+            if (i === 0) dot.classList.add('active');
+            
+            dot.addEventListener('click', () => {
+                diningMenuState.currentSlide = i;
+                updateDiningMenuSlider();
+                updateDiningMenuNavigation();
+                updateDiningMenuDots();
+            });
+            
+            elements.diningMenuDots.appendChild(dot);
+        }
+    }
+
+    /**
+     * Updates dining menu dots
+     */
+    function updateDiningMenuDots() {
+        const dots = elements.diningMenuDots?.querySelectorAll('.dining-menu-dot');
+        if (!dots) return;
+
+        dots.forEach((dot, index) => {
+            if (index === diningMenuState.currentSlide) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
+    }
+
+    // =============================================================================
+    // ANNOUNCEMENTS SLIDER FUNCTIONS
+    // =============================================================================
+
+    /**
+     * Sets up announcements slider functionality
+     */
+    function setupAnnouncementsSlider() {
+        if (elements.announcementsPrevBtn) {
+            elements.announcementsPrevBtn.addEventListener('click', () => {
+                navigateAnnouncements('prev');
+            });
+        }
+
+        if (elements.announcementsNextBtn) {
+            elements.announcementsNextBtn.addEventListener('click', () => {
+                navigateAnnouncements('next');
+            });
+        }
+
+        // Touch events for swipe
+        if (elements.announcementsSlider) {
+            elements.announcementsSlider.addEventListener('touchstart', handleAnnouncementsTouchStart);
+            elements.announcementsSlider.addEventListener('touchend', handleAnnouncementsTouchEnd);
+        }
+    }
+
+    /**
+     * Handles touch start event for announcements
+     */
+    function handleAnnouncementsTouchStart(e) {
+        announcementsState.touchStartX = e.changedTouches[0].screenX;
+    }
+
+    /**
+     * Handles touch end event for announcements
+     */
+    function handleAnnouncementsTouchEnd(e) {
+        announcementsState.touchEndX = e.changedTouches[0].screenX;
+        handleAnnouncementsSwipe();
+    }
+
+    /**
+     * Handles swipe gesture for announcements
+     */
+    function handleAnnouncementsSwipe() {
+        const swipeThreshold = 50;
+        const diff = announcementsState.touchStartX - announcementsState.touchEndX;
+
+        if (Math.abs(diff) > swipeThreshold) {
+            if (diff > 0) {
+                // Swipe left - next slide
+                navigateAnnouncements('next');
+            } else {
+                // Swipe right - previous slide
+                navigateAnnouncements('prev');
+            }
+        }
+    }
+
+    /**
+     * Navigates to previous or next announcements slide
+     */
+    function navigateAnnouncements(direction) {
+        if (announcementsState.totalSlides === 0) return;
+
+        if (direction === 'prev' && announcementsState.currentSlide > 0) {
+            announcementsState.currentSlide--;
+        } else if (direction === 'next' && announcementsState.currentSlide < announcementsState.totalSlides - 1) {
+            announcementsState.currentSlide++;
+        }
+
+        updateAnnouncementsSlider();
+        updateAnnouncementsNavigation();
+        updateAnnouncementsDots();
+    }
+
+    /**
+     * Updates the announcements slider position
+     */
+    function updateAnnouncementsSlider() {
+        if (elements.announcementsSlider) {
+            const translateX = -announcementsState.currentSlide * 100;
+            elements.announcementsSlider.style.transform = `translateX(${translateX}%)`;
+        }
+    }
+
+    /**
+     * Updates announcements navigation buttons
+     */
+    function updateAnnouncementsNavigation() {
+        if (elements.announcementsPrevBtn) {
+            elements.announcementsPrevBtn.style.display = announcementsState.currentSlide > 0 ? 'flex' : 'none';
+            elements.announcementsPrevBtn.disabled = announcementsState.currentSlide === 0;
+        }
+
+        if (elements.announcementsNextBtn) {
+            elements.announcementsNextBtn.style.display = announcementsState.currentSlide < announcementsState.totalSlides - 1 ? 'flex' : 'none';
+            elements.announcementsNextBtn.disabled = announcementsState.currentSlide === announcementsState.totalSlides - 1;
+        }
+    }
+
+    /**
+     * Creates navigation dots for announcements
+     */
+    function createAnnouncementsDots() {
+        if (!elements.announcementsDots) return;
+
+        elements.announcementsDots.innerHTML = '';
+        
+        for (let i = 0; i < announcementsState.totalSlides; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'announcements-dot';
+            if (i === 0) dot.classList.add('active');
+            
+            dot.addEventListener('click', () => {
+                announcementsState.currentSlide = i;
+                updateAnnouncementsSlider();
+                updateAnnouncementsNavigation();
+                updateAnnouncementsDots();
+            });
+            
+            elements.announcementsDots.appendChild(dot);
+        }
+    }
+
+    /**
+     * Updates announcements dots
+     */
+    function updateAnnouncementsDots() {
+        const dots = elements.announcementsDots?.querySelectorAll('.announcements-dot');
+        if (!dots) return;
+
+        dots.forEach((dot, index) => {
+            if (index === announcementsState.currentSlide) {
+                dot.classList.add('active');
+            } else {
+                dot.classList.remove('active');
+            }
+        });
+    }
 });

@@ -1,12 +1,11 @@
-[2025-08-10 21:53:24] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
-[2025-08-10 21:53:24] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+[2025-08-14 13:12:07] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
 
-[2025-08-10 21:53:24] handleNotifications() called for username: ayub.mussa
-[2025-08-10 21:53:24] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 21:53:24] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 21:53:24] Credentials found for user: ayub.mussa, platform: Leave and Absence
-[2025-08-10 21:53:24] Using Leave Portal special authentication
-[2025-08-10 21:53:25] Leave Portal raw response (HTTP 200):
+[2025-08-14 13:12:07] handleNotifications() called for username: ayub.mussa
+[2025-08-14 13:12:07] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-14 13:12:07] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-14 13:12:07] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-14 13:12:07] Using Leave Portal special authentication
+[2025-08-14 13:12:07] Leave Portal raw response (HTTP 200):
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -73,88 +72,113 @@ window.currentLang = "en";
     .view-all-link {
         display: block;
 
-[2025-08-10 21:53:25] Leave Portal response contains: YES - Ibrahim Avci found
-[2025-08-10 21:53:25] Leave Portal response contains: YES - flex-grow-1 found
-[2025-08-10 21:53:25] Leave Portal response contains: YES - requires your review found
-[2025-08-10 21:53:25] Leave Portal: Starting deduplication with 1 notifications
-[2025-08-10 21:53:25] Leave Portal notification #0: 'New leave request from Ibrahim Avci (ID: 50) requires your review.                                                                                                                            New'
-[2025-08-10 21:53:25] Added #0 to filtered results
-[2025-08-10 21:53:25] Leave Portal: Finished deduplication with 1 notifications
-[2025-08-10 21:53:25] Starting notification filtering for user: ayub.mussa
-[2025-08-10 21:53:25] Total notifications before filtering: 1
-[2025-08-10 21:53:25] Total recorded actions: 0
-[2025-08-10 21:53:25] Checking notification ID: 50
-[2025-08-10 21:53:25] Including notification 50
-[2025-08-10 21:53:25] Total notifications after filtering: 1
-[2025-08-10 21:53:25] Platform Leave and Absence returned 1 notifications
-[2025-08-10 21:53:25] Processing platform: LMS, URL: NULL
-[2025-08-10 21:53:25] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 21:53:25] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 21:53:25] Credentials found for user: ayub.mussa, platform: RMS
-[2025-08-10 21:53:25] Using RMS special authentication
-[2025-08-10 21:53:26] RMS raw response (HTTP 200):
- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="../imgs/logo copy.png" type="image/png">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
-    <link rel="stylesheet" href="../CSS/notification.css">
-    <link rel="stylesheet" href="../CSS/generalStyle.css">
-    <title>Notification</title>
-    <style>
-        .fixed-height {
-            min-height: 800px;
-        }
-    </style>
-</head>
-<body id="notification">
-     
+[2025-08-14 13:12:07] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-14 13:12:07] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-14 13:12:07] Leave Portal response contains: NO - requires your review not found
+[2025-08-14 13:12:07] No real notifications found for platform: Leave and Absence
+[2025-08-14 13:12:07] Starting notification filtering for user: ayub.mussa
+[2025-08-14 13:12:07] Total notifications before filtering: 0
+[2025-08-14 13:12:07] Total recorded actions: 0
+[2025-08-14 13:12:07] Total notifications after filtering: 0
+[2025-08-14 13:12:07] Platform Leave and Absence returned 0 notifications
+[2025-08-14 13:12:07] Processing platform: LMS, URL: NULL
+[2025-08-14 13:12:07] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-14 13:12:07] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-14 13:12:07] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-14 13:12:07] Using RMS special authentication
+[2025-08-14 13:12:07] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-<meta charset="UTF-8">
-   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <!-- Bootstrap 4 CSS - une seule fois -->
-   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-   <link rel="preconnect" href="https://fonts.googleapis.com">
-   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-   <link rel="icon" href="../imgs/logo copy.png" type="image/png">
-   <link rel="stylesheet" href="../CSS/navbar.css">
-   <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
 </head>
-<body id="home">
-    <nav class="navbar navbar-expand-lg navbar-light ">
-        <div class="container" style="text-align: center;">
-            <a class="navbar-brand" href="../Dashboard/home.php">
-                <img src="../Imgs/Final_Logo.png" alt="Logo">
-            </a>
-            <div cl
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
 
-[2025-08-10 21:53:26] RMS notifications parsing - response length: 23183
+[2025-08-14 13:12:07] RMS notifications parsing - response length: 2874
 
-[2025-08-10 21:53:26] RMS notification extracted - Title: '278', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:20'
-[2025-08-10 21:53:26] RMS notification extracted - Title: '277', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:03'
-[2025-08-10 21:53:26] RMS notification extracted - Title: '276', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:44'
-[2025-08-10 21:53:26] RMS notification extracted - Title: '275', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:18'
-[2025-08-10 21:53:26] RMS parsing complete - found 4 unread notifications
+[2025-08-14 13:12:07] No real RMS notifications found in response
+[2025-08-14 13:12:07] RMS parsing complete - found 0 unread notifications
 
-[2025-08-10 21:53:26] Platform RMS returned 4 notifications
-[2025-08-10 21:53:26] Processing platform: SIS, URL: NULL[2025-08-10 22:06:03] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+[2025-08-14 13:12:07] Platform RMS returned 0 notifications
+[2025-08-14 13:12:07] Processing platform: SIS, URL: NULL[2025-08-14 13:12:07] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-14 13:12:07] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-14
+[2025-08-14 13:12:07] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-14 13:12:07] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-14 13:12:11] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-14 13:12:11] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
 
-[2025-08-10 22:06:03] handleNotifications() called for username: ayub.mussa
-[2025-08-10 22:06:03] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:06:03] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:06:03] Credentials found for user: ayub.mussa, platform: Leave and Absence
-[2025-08-10 22:06:03] Using Leave Portal special authentication
-[2025-08-10 22:06:04] Leave Portal raw response (HTTP 200):
+[2025-08-14 13:12:11] handleNotifications() called for username: ayub.mussa
+[2025-08-14 13:12:11] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-14 13:12:11] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-14 13:12:11] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-14 13:12:11] Using Leave Portal special authentication
+[2025-08-14 13:12:11] Leave Portal raw response (HTTP 200):
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -221,89 +245,124 @@ window.currentLang = "en";
     .view-all-link {
         display: block;
 
-[2025-08-10 22:06:04] Leave Portal response contains: YES - Ibrahim Avci found
-[2025-08-10 22:06:04] Leave Portal response contains: YES - flex-grow-1 found
-[2025-08-10 22:06:04] Leave Portal response contains: YES - requires your review found
-[2025-08-10 22:06:04] Leave Portal: Starting deduplication with 1 notifications
-[2025-08-10 22:06:04] Leave Portal notification #0: 'New leave request from Ibrahim Avci (ID: 50) requires your review.                                                                                                                            New'
-[2025-08-10 22:06:04] Added #0 to filtered results
-[2025-08-10 22:06:04] Leave Portal: Finished deduplication with 1 notifications
-[2025-08-10 22:06:04] Starting notification filtering for user: ayub.mussa
-[2025-08-10 22:06:04] Total notifications before filtering: 1
-[2025-08-10 22:06:04] Total recorded actions: 0
-[2025-08-10 22:06:04] Checking notification ID: 50
-[2025-08-10 22:06:04] Including notification 50
-[2025-08-10 22:06:04] Total notifications after filtering: 1
-[2025-08-10 22:06:04] Platform Leave and Absence returned 1 notifications
-[2025-08-10 22:06:04] Processing platform: LMS, URL: NULL
-[2025-08-10 22:06:04] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:06:04] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:06:04] Credentials found for user: ayub.mussa, platform: RMS
-[2025-08-10 22:06:04] Using RMS special authentication
-[2025-08-10 22:06:04] RMS raw response (HTTP 200):
- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="../imgs/logo copy.png" type="image/png">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
-    <link rel="stylesheet" href="../CSS/notification.css">
-    <link rel="stylesheet" href="../CSS/generalStyle.css">
-    <title>Notification</title>
-    <style>
-        .fixed-height {
-            min-height: 800px;
-        }
-    </style>
-</head>
-<body id="notification">
-     
+[2025-08-14 13:12:11] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-14 13:12:11] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-14 13:12:11] Leave Portal response contains: NO - requires your review not found
+[2025-08-14 13:12:11] No real notifications found for platform: Leave and Absence
+[2025-08-14 13:12:11] Starting notification filtering for user: ayub.mussa
+[2025-08-14 13:12:11] Total notifications before filtering: 0
+[2025-08-14 13:12:11] Total recorded actions: 0
+[2025-08-14 13:12:11] Total notifications after filtering: 0
+[2025-08-14 13:12:11] Platform Leave and Absence returned 0 notifications
+[2025-08-14 13:12:11] Processing platform: LMS, URL: NULL
+[2025-08-14 13:12:11] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-14 13:12:11] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-14 13:12:11] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-14 13:12:11] Using RMS special authentication
+[2025-08-14 13:12:11] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-<meta charset="UTF-8">
-   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <!-- Bootstrap 4 CSS - une seule fois -->
-   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-   <link rel="preconnect" href="https://fonts.googleapis.com">
-   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-   <link rel="icon" href="../imgs/logo copy.png" type="image/png">
-   <link rel="stylesheet" href="../CSS/navbar.css">
-   <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
 </head>
-<body id="home">
-    <nav class="navbar navbar-expand-lg navbar-light ">
-        <div class="container" style="text-align: center;">
-            <a class="navbar-brand" href="../Dashboard/home.php">
-                <img src="../Imgs/Final_Logo.png" alt="Logo">
-            </a>
-            <div cl
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
 
-[2025-08-10 22:06:04] RMS notifications parsing - response length: 23183
+[2025-08-14 13:12:11] RMS notifications parsing - response length: 2874
 
-[2025-08-10 22:06:04] RMS notification extracted - Title: '278', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:20'
-[2025-08-10 22:06:04] RMS notification extracted - Title: '277', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:03'
-[2025-08-10 22:06:04] RMS notification extracted - Title: '276', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:44'
-[2025-08-10 22:06:04] RMS notification extracted - Title: '275', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:18'
-[2025-08-10 22:06:04] RMS parsing complete - found 4 unread notifications
+[2025-08-14 13:12:11] No real RMS notifications found in response
+[2025-08-14 13:12:11] RMS parsing complete - found 0 unread notifications
 
-[2025-08-10 22:06:04] Platform RMS returned 4 notifications
-[2025-08-10 22:06:04] Processing platform: SIS, URL: NULL[2025-08-10 22:06:04] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
-[2025-08-10 22:09:20] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+[2025-08-14 13:12:11] Platform RMS returned 0 notifications
+[2025-08-14 13:12:11] Processing platform: SIS, URL: NULL[2025-08-14 13:12:11] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-14
+[2025-08-14 13:12:11] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-14 13:12:11] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-14 13:16:51] Request: POST to endpoint 'login' - Query: endpoint=login
 
-[2025-08-10 22:09:20] handleNotifications() called for username: ayub.mussa
-[2025-08-10 22:09:20] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:09:20] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:09:20] Credentials found for user: ayub.mussa, platform: Leave and Absence
-[2025-08-10 22:09:20] Using Leave Portal special authentication
-[2025-08-10 22:09:22] Leave Portal raw response (HTTP 200):
+[2025-08-14 13:16:52] Found CSRF token using pattern: /name="csrf_token" value="([^"]+)"/
+[2025-08-14 13:16:52] CSRF token extracted: c47d2be9ae...
+[2025-08-14 13:16:52] Leave Portal Authentication attempt for user: ayub.mussa, HTTP Code: 200, Final URL: https://leave.final.digital/Dashboard/adminDashboard.php
+[2025-08-14 13:16:52] Leave Portal authentication successful for user: ayub.mussa
+[2025-08-14 13:16:52] LMS Authentication attempt for user: ayub.mussa
+[2025-08-14 13:16:52] LMS authentication successful for user: ayub.mussa (no authentication required)
+[2025-08-14 13:16:53] RMS Authentication attempt for user: ayub.mussa, HTTP Code: 200, Final URL: https://rms.final.digital/Dashboard/home.php
+[2025-08-14 13:16:53] RMS authentication successful for user: ayub.mussa
+[2025-08-14 13:16:53] SIS Authentication attempt for user: ayub.mussa
+[2025-08-14 13:16:53] Trying SIS login URL: https://sis.final.edu.tr/
+[2025-08-14 13:16:53] SIS Login Page Response (HTTP 200) for URL: https://sis.final.edu.tr/
+[2025-08-14 13:16:53] SIS has CAPTCHA - returning CAPTCHA required response[2025-08-14 13:16:53] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-14 13:16:53] handleNotifications() called for username: ayub.mussa
+[2025-08-14 13:16:53] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-14 13:16:53] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-14 13:16:53] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-14 13:16:53] Using Leave Portal special authentication
+[2025-08-14 13:16:53] Leave Portal raw response (HTTP 200):
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -370,26 +429,42 @@ window.currentLang = "en";
     .view-all-link {
         display: block;
 
-[2025-08-10 22:09:22] Leave Portal response contains: YES - Ibrahim Avci found
-[2025-08-10 22:09:22] Leave Portal response contains: YES - flex-grow-1 found
-[2025-08-10 22:09:22] Leave Portal response contains: YES - requires your review found
-[2025-08-10 22:09:22] Leave Portal: Starting deduplication with 1 notifications
-[2025-08-10 22:09:22] Leave Portal notification #0: 'New leave request from Ibrahim Avci (ID: 50) requires your review.                                                                                                                            New'
-[2025-08-10 22:09:22] Added #0 to filtered results
-[2025-08-10 22:09:22] Leave Portal: Finished deduplication with 1 notifications
-[2025-08-10 22:09:22] Starting notification filtering for user: ayub.mussa
-[2025-08-10 22:09:22] Total notifications before filtering: 1
-[2025-08-10 22:09:22] Total recorded actions: 0
-[2025-08-10 22:09:22] Checking notification ID: 50
-[2025-08-10 22:09:22] Including notification 50
-[2025-08-10 22:09:22] Total notifications after filtering: 1
-[2025-08-10 22:09:22] Platform Leave and Absence returned 1 notifications
-[2025-08-10 22:09:22] Processing platform: LMS, URL: NULL
-[2025-08-10 22:09:22] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:09:22] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:09:22] Credentials found for user: ayub.mussa, platform: RMS
-[2025-08-10 22:09:22] Using RMS special authentication
-[2025-08-10 22:09:24] RMS raw response (HTTP 200):
+[2025-08-14 13:16:53] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-14 13:16:53] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-14 13:16:53] Leave Portal response contains: NO - requires your review not found
+[2025-08-14 13:16:53] Leave Portal: Starting deduplication with 10 notifications
+[2025-08-14 13:16:53] Leave Portal notification #0: 'Recent Notifications'
+[2025-08-14 13:16:53] Skipped #0: generic/summary content
+[2025-08-14 13:16:53] Leave Portal notification #1: 'No notifications available'
+[2025-08-14 13:16:53] Skipped #1: UI element 'no notifications available'
+[2025-08-14 13:16:53] Leave Portal notification #2: 'View All Notifications'
+[2025-08-14 13:16:53] Skipped #2: generic/summary content
+[2025-08-14 13:16:53] Leave Portal notification #3: 'Absence Records'
+[2025-08-14 13:16:53] Skipped #3: UI element 'absence records'
+[2025-08-14 13:16:53] Leave Portal notification #4: 'All Notifications'
+[2025-08-14 13:16:53] Skipped #4: UI element 'all notifications'
+[2025-08-14 13:16:53] Leave Portal notification #5: 'All Notifications'
+[2025-08-14 13:16:53] Skipped #5: UI element 'all notifications'
+[2025-08-14 13:16:53] Leave Portal notification #6: 'Notifications'
+[2025-08-14 13:16:53] Skipped #6: too short or empty
+[2025-08-14 13:16:53] Leave Portal notification #7: 'Your Notifications        0'
+[2025-08-14 13:16:53] Skipped #7: UI element 'your notifications'
+[2025-08-14 13:16:53] Leave Portal notification #8: 'No notifications found'
+[2025-08-14 13:16:53] Skipped #8: UI element 'no notifications found'
+[2025-08-14 13:16:53] Leave Portal notification #9: 'You'll see your notifications here when you receive them.'
+[2025-08-14 13:16:53] Skipped #9: UI element 'you'll see your notifications here'
+[2025-08-14 13:16:53] Leave Portal: Finished deduplication with 0 notifications
+[2025-08-14 13:16:53] Starting notification filtering for user: ayub.mussa
+[2025-08-14 13:16:53] Total notifications before filtering: 0
+[2025-08-14 13:16:53] Total recorded actions: 0
+[2025-08-14 13:16:53] Total notifications after filtering: 0
+[2025-08-14 13:16:53] Platform Leave and Absence returned 0 notifications
+[2025-08-14 13:16:53] Processing platform: LMS, URL: NULL
+[2025-08-14 13:16:53] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-14 13:16:53] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-14 13:16:53] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-14 13:16:53] Using RMS special authentication
+[2025-08-14 13:16:54] RMS raw response (HTTP 200):
  <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -435,24 +510,25 @@ window.currentLang = "en";
             </a>
             <div cl
 
-[2025-08-10 22:09:24] RMS notifications parsing - response length: 23183
+[2025-08-14 13:16:54] RMS notifications parsing - response length: 20669
 
-[2025-08-10 22:09:24] RMS notification extracted - Title: '278', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:20'
-[2025-08-10 22:09:24] RMS notification extracted - Title: '277', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:03'
-[2025-08-10 22:09:24] RMS notification extracted - Title: '276', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:44'
-[2025-08-10 22:09:24] RMS notification extracted - Title: '275', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:18'
-[2025-08-10 22:09:24] RMS parsing complete - found 4 unread notifications
+[2025-08-14 13:16:54] RMS notification extracted - Title: '276', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:44'
+[2025-08-14 13:16:54] RMS notification extracted - Title: '275', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:18'
+[2025-08-14 13:16:54] RMS parsing complete - found 2 unread notifications
 
-[2025-08-10 22:09:24] Platform RMS returned 4 notifications
-[2025-08-10 22:09:24] Processing platform: SIS, URL: NULL[2025-08-10 22:09:24] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
-[2025-08-10 22:11:42] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+[2025-08-14 13:16:54] Platform RMS returned 2 notifications
+[2025-08-14 13:16:54] Processing platform: SIS, URL: NULL[2025-08-14 13:16:54] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-14 13:16:54] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-14 13:16:54] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-14 13:16:54] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-14
+[2025-08-14 13:28:56] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
 
-[2025-08-10 22:11:42] handleNotifications() called for username: ayub.mussa
-[2025-08-10 22:11:42] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:11:42] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:11:42] Credentials found for user: ayub.mussa, platform: Leave and Absence
-[2025-08-10 22:11:42] Using Leave Portal special authentication
-[2025-08-10 22:11:42] Leave Portal raw response (HTTP 200):
+[2025-08-14 13:28:56] handleNotifications() called for username: ayub.mussa
+[2025-08-14 13:28:56] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-14 13:28:56] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-14 13:28:56] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-14 13:28:56] Using Leave Portal special authentication
+[2025-08-14 13:28:56] Leave Portal raw response (HTTP 200):
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -519,26 +595,42 @@ window.currentLang = "en";
     .view-all-link {
         display: block;
 
-[2025-08-10 22:11:42] Leave Portal response contains: YES - Ibrahim Avci found
-[2025-08-10 22:11:42] Leave Portal response contains: YES - flex-grow-1 found
-[2025-08-10 22:11:42] Leave Portal response contains: YES - requires your review found
-[2025-08-10 22:11:42] Leave Portal: Starting deduplication with 1 notifications
-[2025-08-10 22:11:42] Leave Portal notification #0: 'New leave request from Ibrahim Avci (ID: 50) requires your review.                                                                                                                            New'
-[2025-08-10 22:11:42] Added #0 to filtered results
-[2025-08-10 22:11:42] Leave Portal: Finished deduplication with 1 notifications
-[2025-08-10 22:11:42] Starting notification filtering for user: ayub.mussa
-[2025-08-10 22:11:42] Total notifications before filtering: 1
-[2025-08-10 22:11:42] Total recorded actions: 0
-[2025-08-10 22:11:42] Checking notification ID: 50
-[2025-08-10 22:11:42] Including notification 50
-[2025-08-10 22:11:42] Total notifications after filtering: 1
-[2025-08-10 22:11:42] Platform Leave and Absence returned 1 notifications
-[2025-08-10 22:11:42] Processing platform: LMS, URL: NULL
-[2025-08-10 22:11:42] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:11:42] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:11:42] Credentials found for user: ayub.mussa, platform: RMS
-[2025-08-10 22:11:42] Using RMS special authentication
-[2025-08-10 22:11:43] RMS raw response (HTTP 200):
+[2025-08-14 13:28:56] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-14 13:28:56] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-14 13:28:56] Leave Portal response contains: NO - requires your review not found
+[2025-08-14 13:28:56] Leave Portal: Starting deduplication with 10 notifications
+[2025-08-14 13:28:56] Leave Portal notification #0: 'Recent Notifications'
+[2025-08-14 13:28:56] Skipped #0: generic/summary content
+[2025-08-14 13:28:56] Leave Portal notification #1: 'No notifications available'
+[2025-08-14 13:28:56] Skipped #1: UI element 'no notifications available'
+[2025-08-14 13:28:56] Leave Portal notification #2: 'View All Notifications'
+[2025-08-14 13:28:56] Skipped #2: generic/summary content
+[2025-08-14 13:28:56] Leave Portal notification #3: 'Absence Records'
+[2025-08-14 13:28:56] Skipped #3: UI element 'absence records'
+[2025-08-14 13:28:56] Leave Portal notification #4: 'All Notifications'
+[2025-08-14 13:28:56] Skipped #4: UI element 'all notifications'
+[2025-08-14 13:28:56] Leave Portal notification #5: 'All Notifications'
+[2025-08-14 13:28:56] Skipped #5: UI element 'all notifications'
+[2025-08-14 13:28:56] Leave Portal notification #6: 'Notifications'
+[2025-08-14 13:28:56] Skipped #6: too short or empty
+[2025-08-14 13:28:56] Leave Portal notification #7: 'Your Notifications        0'
+[2025-08-14 13:28:56] Skipped #7: UI element 'your notifications'
+[2025-08-14 13:28:56] Leave Portal notification #8: 'No notifications found'
+[2025-08-14 13:28:56] Skipped #8: UI element 'no notifications found'
+[2025-08-14 13:28:56] Leave Portal notification #9: 'You'll see your notifications here when you receive them.'
+[2025-08-14 13:28:56] Skipped #9: UI element 'you'll see your notifications here'
+[2025-08-14 13:28:56] Leave Portal: Finished deduplication with 0 notifications
+[2025-08-14 13:28:56] Starting notification filtering for user: ayub.mussa
+[2025-08-14 13:28:56] Total notifications before filtering: 0
+[2025-08-14 13:28:56] Total recorded actions: 0
+[2025-08-14 13:28:56] Total notifications after filtering: 0
+[2025-08-14 13:28:56] Platform Leave and Absence returned 0 notifications
+[2025-08-14 13:28:56] Processing platform: LMS, URL: NULL
+[2025-08-14 13:28:56] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-14 13:28:56] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-14 13:28:56] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-14 13:28:56] Using RMS special authentication
+[2025-08-14 13:28:57] RMS raw response (HTTP 200):
  <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -584,25 +676,27 @@ window.currentLang = "en";
             </a>
             <div cl
 
-[2025-08-10 22:11:43] RMS notifications parsing - response length: 23183
+[2025-08-14 13:28:57] RMS notifications parsing - response length: 20669
 
-[2025-08-10 22:11:43] RMS notification extracted - Title: '278', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:20'
-[2025-08-10 22:11:43] RMS notification extracted - Title: '277', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:03'
-[2025-08-10 22:11:43] RMS notification extracted - Title: '276', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:44'
-[2025-08-10 22:11:43] RMS notification extracted - Title: '275', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:18'
-[2025-08-10 22:11:43] RMS parsing complete - found 4 unread notifications
+[2025-08-14 13:28:57] RMS notification extracted - Title: '276', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:44'
+[2025-08-14 13:28:57] RMS notification extracted - Title: '275', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:18'
+[2025-08-14 13:28:57] RMS parsing complete - found 2 unread notifications
 
-[2025-08-10 22:11:43] Platform RMS returned 4 notifications
-[2025-08-10 22:11:43] Processing platform: SIS, URL: NULL[2025-08-10 22:11:43] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
-[2025-08-10 22:12:26] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
-[2025-08-10 22:12:26] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+[2025-08-14 13:28:57] Platform RMS returned 2 notifications
+[2025-08-14 13:28:57] Processing platform: SIS, URL: NULL[2025-08-14 13:28:57] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-14 13:28:57] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-14
+[2025-08-14 13:28:57] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-14 13:28:57] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 07:52:55] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 07:52:55] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 07:52:55] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
 
-[2025-08-10 22:12:26] handleNotifications() called for username: ayub.mussa
-[2025-08-10 22:12:26] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:12:26] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:12:26] Credentials found for user: ayub.mussa, platform: Leave and Absence
-[2025-08-10 22:12:26] Using Leave Portal special authentication
-[2025-08-10 22:12:27] Leave Portal raw response (HTTP 200):
+[2025-08-15 07:52:55] handleNotifications() called for username: ayub.mussa
+[2025-08-15 07:52:55] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 07:52:55] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 07:52:55] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 07:52:55] Using Leave Portal special authentication
+[2025-08-15 07:52:56] Leave Portal raw response (HTTP 200):
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -669,88 +763,111 @@ window.currentLang = "en";
     .view-all-link {
         display: block;
 
-[2025-08-10 22:12:27] Leave Portal response contains: YES - Ibrahim Avci found
-[2025-08-10 22:12:27] Leave Portal response contains: YES - flex-grow-1 found
-[2025-08-10 22:12:27] Leave Portal response contains: YES - requires your review found
-[2025-08-10 22:12:27] Leave Portal: Starting deduplication with 1 notifications
-[2025-08-10 22:12:27] Leave Portal notification #0: 'New leave request from Ibrahim Avci (ID: 50) requires your review.                                                                                                                            New'
-[2025-08-10 22:12:27] Added #0 to filtered results
-[2025-08-10 22:12:27] Leave Portal: Finished deduplication with 1 notifications
-[2025-08-10 22:12:27] Starting notification filtering for user: ayub.mussa
-[2025-08-10 22:12:27] Total notifications before filtering: 1
-[2025-08-10 22:12:27] Total recorded actions: 0
-[2025-08-10 22:12:27] Checking notification ID: 50
-[2025-08-10 22:12:27] Including notification 50
-[2025-08-10 22:12:27] Total notifications after filtering: 1
-[2025-08-10 22:12:27] Platform Leave and Absence returned 1 notifications
-[2025-08-10 22:12:27] Processing platform: LMS, URL: NULL
-[2025-08-10 22:12:27] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:12:27] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:12:27] Credentials found for user: ayub.mussa, platform: RMS
-[2025-08-10 22:12:27] Using RMS special authentication
-[2025-08-10 22:12:27] RMS raw response (HTTP 200):
- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="../imgs/logo copy.png" type="image/png">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
-    <link rel="stylesheet" href="../CSS/notification.css">
-    <link rel="stylesheet" href="../CSS/generalStyle.css">
-    <title>Notification</title>
-    <style>
-        .fixed-height {
-            min-height: 800px;
-        }
-    </style>
-</head>
-<body id="notification">
-     
+[2025-08-15 07:52:56] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 07:52:56] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 07:52:56] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 07:52:56] No real notifications found for platform: Leave and Absence
+[2025-08-15 07:52:56] Starting notification filtering for user: ayub.mussa
+[2025-08-15 07:52:56] Total notifications before filtering: 0
+[2025-08-15 07:52:56] Total recorded actions: 0
+[2025-08-15 07:52:56] Total notifications after filtering: 0
+[2025-08-15 07:52:56] Platform Leave and Absence returned 0 notifications
+[2025-08-15 07:52:56] Processing platform: LMS, URL: NULL
+[2025-08-15 07:52:56] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 07:52:56] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 07:52:56] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 07:52:56] Using RMS special authentication
+[2025-08-15 07:52:56] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-<meta charset="UTF-8">
-   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <!-- Bootstrap 4 CSS - une seule fois -->
-   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-   <link rel="preconnect" href="https://fonts.googleapis.com">
-   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-   <link rel="icon" href="../imgs/logo copy.png" type="image/png">
-   <link rel="stylesheet" href="../CSS/navbar.css">
-   <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
 </head>
-<body id="home">
-    <nav class="navbar navbar-expand-lg navbar-light ">
-        <div class="container" style="text-align: center;">
-            <a class="navbar-brand" href="../Dashboard/home.php">
-                <img src="../Imgs/Final_Logo.png" alt="Logo">
-            </a>
-            <div cl
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
 
-[2025-08-10 22:12:27] RMS notifications parsing - response length: 23183
+[2025-08-15 07:52:56] RMS notifications parsing - response length: 2874
 
-[2025-08-10 22:12:27] RMS notification extracted - Title: '278', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:20'
-[2025-08-10 22:12:27] RMS notification extracted - Title: '277', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:03'
-[2025-08-10 22:12:27] RMS notification extracted - Title: '276', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:44'
-[2025-08-10 22:12:27] RMS notification extracted - Title: '275', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:18'
-[2025-08-10 22:12:27] RMS parsing complete - found 4 unread notifications
+[2025-08-15 07:52:56] No real RMS notifications found in response
+[2025-08-15 07:52:56] RMS parsing complete - found 0 unread notifications
 
-[2025-08-10 22:12:27] Platform RMS returned 4 notifications
-[2025-08-10 22:12:27] Processing platform: SIS, URL: NULL[2025-08-10 22:12:36] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+[2025-08-15 07:52:56] Platform RMS returned 0 notifications
+[2025-08-15 07:52:56] Processing platform: SIS, URL: NULL[2025-08-15 07:52:56] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 07:52:57] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 07:53:17] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 07:53:17] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
 
-[2025-08-10 22:12:36] handleNotifications() called for username: ayub.mussa
-[2025-08-10 22:12:36] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:12:36] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:12:36] Credentials found for user: ayub.mussa, platform: Leave and Absence
-[2025-08-10 22:12:36] Using Leave Portal special authentication
-[2025-08-10 22:12:36] Leave Portal raw response (HTTP 200):
+[2025-08-15 07:53:17] handleNotifications() called for username: ayub.mussa
+[2025-08-15 07:53:17] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 07:53:17] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 07:53:17] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 07:53:17] Using Leave Portal special authentication
+[2025-08-15 07:53:17] Leave Portal raw response (HTTP 200):
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -817,89 +934,111 @@ window.currentLang = "en";
     .view-all-link {
         display: block;
 
-[2025-08-10 22:12:36] Leave Portal response contains: YES - Ibrahim Avci found
-[2025-08-10 22:12:36] Leave Portal response contains: YES - flex-grow-1 found
-[2025-08-10 22:12:36] Leave Portal response contains: YES - requires your review found
-[2025-08-10 22:12:36] Leave Portal: Starting deduplication with 1 notifications
-[2025-08-10 22:12:36] Leave Portal notification #0: 'New leave request from Ibrahim Avci (ID: 50) requires your review.                                                                                                                            New'
-[2025-08-10 22:12:36] Added #0 to filtered results
-[2025-08-10 22:12:36] Leave Portal: Finished deduplication with 1 notifications
-[2025-08-10 22:12:36] Starting notification filtering for user: ayub.mussa
-[2025-08-10 22:12:36] Total notifications before filtering: 1
-[2025-08-10 22:12:36] Total recorded actions: 0
-[2025-08-10 22:12:36] Checking notification ID: 50
-[2025-08-10 22:12:36] Including notification 50
-[2025-08-10 22:12:36] Total notifications after filtering: 1
-[2025-08-10 22:12:36] Platform Leave and Absence returned 1 notifications
-[2025-08-10 22:12:36] Processing platform: LMS, URL: NULL
-[2025-08-10 22:12:36] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:12:36] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:12:36] Credentials found for user: ayub.mussa, platform: RMS
-[2025-08-10 22:12:36] Using RMS special authentication
-[2025-08-10 22:12:37] RMS raw response (HTTP 200):
- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="../imgs/logo copy.png" type="image/png">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
-    <link rel="stylesheet" href="../CSS/notification.css">
-    <link rel="stylesheet" href="../CSS/generalStyle.css">
-    <title>Notification</title>
-    <style>
-        .fixed-height {
-            min-height: 800px;
-        }
-    </style>
-</head>
-<body id="notification">
-     
+[2025-08-15 07:53:17] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 07:53:17] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 07:53:17] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 07:53:17] No real notifications found for platform: Leave and Absence
+[2025-08-15 07:53:17] Starting notification filtering for user: ayub.mussa
+[2025-08-15 07:53:17] Total notifications before filtering: 0
+[2025-08-15 07:53:17] Total recorded actions: 0
+[2025-08-15 07:53:17] Total notifications after filtering: 0
+[2025-08-15 07:53:17] Platform Leave and Absence returned 0 notifications
+[2025-08-15 07:53:17] Processing platform: LMS, URL: NULL
+[2025-08-15 07:53:17] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 07:53:17] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 07:53:17] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 07:53:17] Using RMS special authentication
+[2025-08-15 07:53:18] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-<meta charset="UTF-8">
-   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <!-- Bootstrap 4 CSS - une seule fois -->
-   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-   <link rel="preconnect" href="https://fonts.googleapis.com">
-   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-   <link rel="icon" href="../imgs/logo copy.png" type="image/png">
-   <link rel="stylesheet" href="../CSS/navbar.css">
-   <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
 </head>
-<body id="home">
-    <nav class="navbar navbar-expand-lg navbar-light ">
-        <div class="container" style="text-align: center;">
-            <a class="navbar-brand" href="../Dashboard/home.php">
-                <img src="../Imgs/Final_Logo.png" alt="Logo">
-            </a>
-            <div cl
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
 
-[2025-08-10 22:12:37] RMS notifications parsing - response length: 23183
+[2025-08-15 07:53:18] RMS notifications parsing - response length: 2874
 
-[2025-08-10 22:12:37] RMS notification extracted - Title: '278', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:20'
-[2025-08-10 22:12:37] RMS notification extracted - Title: '277', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:03'
-[2025-08-10 22:12:37] RMS notification extracted - Title: '276', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:44'
-[2025-08-10 22:12:37] RMS notification extracted - Title: '275', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:18'
-[2025-08-10 22:12:37] RMS parsing complete - found 4 unread notifications
+[2025-08-15 07:53:18] No real RMS notifications found in response
+[2025-08-15 07:53:18] RMS parsing complete - found 0 unread notifications
 
-[2025-08-10 22:12:37] Platform RMS returned 4 notifications
-[2025-08-10 22:12:37] Processing platform: SIS, URL: NULL[2025-08-10 22:12:37] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
-[2025-08-10 22:12:40] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+[2025-08-15 07:53:18] Platform RMS returned 0 notifications
+[2025-08-15 07:53:18] Processing platform: SIS, URL: NULL[2025-08-15 07:53:18] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 07:53:18] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 07:53:18] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 07:53:54] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
 
-[2025-08-10 22:12:40] handleNotifications() called for username: ayub.mussa
-[2025-08-10 22:12:40] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:12:40] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
-[2025-08-10 22:12:40] Credentials found for user: ayub.mussa, platform: Leave and Absence
-[2025-08-10 22:12:40] Using Leave Portal special authentication
-[2025-08-10 22:12:41] Leave Portal raw response (HTTP 200):
+[2025-08-15 07:53:54] handleNotifications() called for username: ayub.mussa
+[2025-08-15 07:53:54] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 07:53:54] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 07:53:54] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 07:53:54] Using Leave Portal special authentication
+[2025-08-15 07:53:54] Leave Portal raw response (HTTP 200):
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -966,78 +1105,1822 @@ window.currentLang = "en";
     .view-all-link {
         display: block;
 
-[2025-08-10 22:12:41] Leave Portal response contains: YES - Ibrahim Avci found
-[2025-08-10 22:12:41] Leave Portal response contains: YES - flex-grow-1 found
-[2025-08-10 22:12:41] Leave Portal response contains: YES - requires your review found
-[2025-08-10 22:12:41] Leave Portal: Starting deduplication with 1 notifications
-[2025-08-10 22:12:41] Leave Portal notification #0: 'New leave request from Ibrahim Avci (ID: 50) requires your review.                                                                                                                            New'
-[2025-08-10 22:12:41] Added #0 to filtered results
-[2025-08-10 22:12:41] Leave Portal: Finished deduplication with 1 notifications
-[2025-08-10 22:12:41] Starting notification filtering for user: ayub.mussa
-[2025-08-10 22:12:41] Total notifications before filtering: 1
-[2025-08-10 22:12:41] Total recorded actions: 0
-[2025-08-10 22:12:41] Checking notification ID: 50
-[2025-08-10 22:12:41] Including notification 50
-[2025-08-10 22:12:41] Total notifications after filtering: 1
-[2025-08-10 22:12:41] Platform Leave and Absence returned 1 notifications
-[2025-08-10 22:12:41] Processing platform: LMS, URL: NULL
-[2025-08-10 22:12:41] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:12:41] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
-[2025-08-10 22:12:41] Credentials found for user: ayub.mussa, platform: RMS
-[2025-08-10 22:12:41] Using RMS special authentication
-[2025-08-10 22:12:41] RMS raw response (HTTP 200):
- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="../imgs/logo copy.png" type="image/png">
-    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-    <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
-    <link rel="stylesheet" href="../CSS/notification.css">
-    <link rel="stylesheet" href="../CSS/generalStyle.css">
-    <title>Notification</title>
-    <style>
-        .fixed-height {
-            min-height: 800px;
-        }
-    </style>
-</head>
-<body id="notification">
-     
+[2025-08-15 07:53:54] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 07:53:54] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 07:53:54] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 07:53:54] No real notifications found for platform: Leave and Absence
+[2025-08-15 07:53:54] Starting notification filtering for user: ayub.mussa
+[2025-08-15 07:53:54] Total notifications before filtering: 0
+[2025-08-15 07:53:54] Total recorded actions: 0
+[2025-08-15 07:53:54] Total notifications after filtering: 0
+[2025-08-15 07:53:54] Platform Leave and Absence returned 0 notifications
+[2025-08-15 07:53:54] Processing platform: LMS, URL: NULL
+[2025-08-15 07:53:54] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 07:53:54] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 07:53:54] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 07:53:54] Using RMS special authentication
+[2025-08-15 07:53:55] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-<meta charset="UTF-8">
-   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-   <!-- Bootstrap 4 CSS - une seule fois -->
-   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-   <link rel="preconnect" href="https://fonts.googleapis.com">
-   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-   <link rel="icon" href="../imgs/logo copy.png" type="image/png">
-   <link rel="stylesheet" href="../CSS/navbar.css">
-   <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
 </head>
-<body id="home">
-    <nav class="navbar navbar-expand-lg navbar-light ">
-        <div class="container" style="text-align: center;">
-            <a class="navbar-brand" href="../Dashboard/home.php">
-                <img src="../Imgs/Final_Logo.png" alt="Logo">
-            </a>
-            <div cl
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
 
-[2025-08-10 22:12:41] RMS notifications parsing - response length: 23183
+[2025-08-15 07:53:55] RMS notifications parsing - response length: 2874
 
-[2025-08-10 22:12:41] RMS notification extracted - Title: '278', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:20'
-[2025-08-10 22:12:41] RMS notification extracted - Title: '277', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:07:03'
-[2025-08-10 22:12:41] RMS notification extracted - Title: '276', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:44'
-[2025-08-10 22:12:41] RMS notification extracted - Title: '275', Message: 'Your Purchase Request Status Update', Date: '2025-08-07 14:04:18'
-[2025-08-10 22:12:41] RMS parsing complete - found 4 unread notifications
+[2025-08-15 07:53:55] No real RMS notifications found in response
+[2025-08-15 07:53:55] RMS parsing complete - found 0 unread notifications
 
-[2025-08-10 22:12:41] Platform RMS returned 4 notifications
-[2025-08-10 22:12:41] Processing platform: SIS, URL: NULL[2025-08-10 22:12:41] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 07:53:55] Platform RMS returned 0 notifications
+[2025-08-15 07:53:55] Processing platform: SIS, URL: NULL[2025-08-15 07:53:55] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 07:53:55] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 07:53:55] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 07:53:55] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 07:54:29] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-15 07:54:29] handleNotifications() called for username: ayub.mussa
+[2025-08-15 07:54:29] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 07:54:29] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 07:54:29] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 07:54:29] Using Leave Portal special authentication
+[2025-08-15 07:54:29] Leave Portal raw response (HTTP 200):
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+// Set current language for JavaScript use
+window.currentLang = "en";
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet"> 
+  <script src="https://kit.fontawesome.com/242d4b38d8.js" crossorigin="anonymous"></script> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="../Css/style.css"> 
+  <link rel="icon" href="../logo/logo1.png" type="image/png" class="logo">
+  <style>
+    .Nav-link{
+        width: 170px;
+    }
+     .profile-dropdown {
+        min-width: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    .profile-dropdown .dropdown-item {
+        padding: 10px 16px;
+        transition: background-color 0.2s ease;
+    }
+
+    .profile-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .profile-dropdown .dropdown-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .nav-profile.dropdown-toggle::after {
+        margin-left: 8px;
+    }
+
+    .nav-profile {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav-profile:hover {
+        color: #007bff !important;
+    }
+    
+    .notification-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 16px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .view-all-link {
+        display: block;
+
+[2025-08-15 07:54:29] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 07:54:29] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 07:54:29] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 07:54:29] No real notifications found for platform: Leave and Absence
+[2025-08-15 07:54:29] Starting notification filtering for user: ayub.mussa
+[2025-08-15 07:54:29] Total notifications before filtering: 0
+[2025-08-15 07:54:29] Total recorded actions: 0
+[2025-08-15 07:54:29] Total notifications after filtering: 0
+[2025-08-15 07:54:29] Platform Leave and Absence returned 0 notifications
+[2025-08-15 07:54:29] Processing platform: LMS, URL: NULL
+[2025-08-15 07:54:29] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 07:54:29] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 07:54:29] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 07:54:29] Using RMS special authentication
+[2025-08-15 07:54:30] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
+
+[2025-08-15 07:54:30] RMS notifications parsing - response length: 2874
+
+[2025-08-15 07:54:30] No real RMS notifications found in response
+[2025-08-15 07:54:30] RMS parsing complete - found 0 unread notifications
+
+[2025-08-15 07:54:30] Platform RMS returned 0 notifications
+[2025-08-15 07:54:30] Processing platform: SIS, URL: NULL[2025-08-15 07:54:30] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 07:54:30] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 07:54:30] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 07:54:30] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 07:59:52] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-15 07:59:52] handleNotifications() called for username: ayub.mussa
+[2025-08-15 07:59:52] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 07:59:52] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 07:59:52] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 07:59:52] Using Leave Portal special authentication
+[2025-08-15 07:59:53] Leave Portal raw response (HTTP 200):
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+// Set current language for JavaScript use
+window.currentLang = "en";
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet"> 
+  <script src="https://kit.fontawesome.com/242d4b38d8.js" crossorigin="anonymous"></script> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="../Css/style.css"> 
+  <link rel="icon" href="../logo/logo1.png" type="image/png" class="logo">
+  <style>
+    .Nav-link{
+        width: 170px;
+    }
+     .profile-dropdown {
+        min-width: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    .profile-dropdown .dropdown-item {
+        padding: 10px 16px;
+        transition: background-color 0.2s ease;
+    }
+
+    .profile-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .profile-dropdown .dropdown-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .nav-profile.dropdown-toggle::after {
+        margin-left: 8px;
+    }
+
+    .nav-profile {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav-profile:hover {
+        color: #007bff !important;
+    }
+    
+    .notification-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 16px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .view-all-link {
+        display: block;
+
+[2025-08-15 07:59:53] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 07:59:53] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 07:59:53] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 07:59:53] No real notifications found for platform: Leave and Absence
+[2025-08-15 07:59:53] Starting notification filtering for user: ayub.mussa
+[2025-08-15 07:59:53] Total notifications before filtering: 0
+[2025-08-15 07:59:53] Total recorded actions: 0
+[2025-08-15 07:59:53] Total notifications after filtering: 0
+[2025-08-15 07:59:53] Platform Leave and Absence returned 0 notifications
+[2025-08-15 07:59:53] Processing platform: LMS, URL: NULL
+[2025-08-15 07:59:53] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 07:59:53] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 07:59:53] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 07:59:53] Using RMS special authentication
+[2025-08-15 07:59:53] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
+
+[2025-08-15 07:59:53] RMS notifications parsing - response length: 2874
+
+[2025-08-15 07:59:53] No real RMS notifications found in response
+[2025-08-15 07:59:53] RMS parsing complete - found 0 unread notifications
+
+[2025-08-15 07:59:53] Platform RMS returned 0 notifications
+[2025-08-15 07:59:53] Processing platform: SIS, URL: NULL[2025-08-15 07:59:53] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 07:59:53] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 07:59:53] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 07:59:53] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 08:00:11] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-15 08:00:11] handleNotifications() called for username: ayub.mussa
+[2025-08-15 08:00:11] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:00:11] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:00:11] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 08:00:11] Using Leave Portal special authentication
+[2025-08-15 08:00:12] Leave Portal raw response (HTTP 200):
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+// Set current language for JavaScript use
+window.currentLang = "en";
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet"> 
+  <script src="https://kit.fontawesome.com/242d4b38d8.js" crossorigin="anonymous"></script> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="../Css/style.css"> 
+  <link rel="icon" href="../logo/logo1.png" type="image/png" class="logo">
+  <style>
+    .Nav-link{
+        width: 170px;
+    }
+     .profile-dropdown {
+        min-width: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    .profile-dropdown .dropdown-item {
+        padding: 10px 16px;
+        transition: background-color 0.2s ease;
+    }
+
+    .profile-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .profile-dropdown .dropdown-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .nav-profile.dropdown-toggle::after {
+        margin-left: 8px;
+    }
+
+    .nav-profile {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav-profile:hover {
+        color: #007bff !important;
+    }
+    
+    .notification-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 16px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .view-all-link {
+        display: block;
+
+[2025-08-15 08:00:12] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 08:00:12] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 08:00:12] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 08:00:12] No real notifications found for platform: Leave and Absence
+[2025-08-15 08:00:12] Starting notification filtering for user: ayub.mussa
+[2025-08-15 08:00:12] Total notifications before filtering: 0
+[2025-08-15 08:00:12] Total recorded actions: 0
+[2025-08-15 08:00:12] Total notifications after filtering: 0
+[2025-08-15 08:00:12] Platform Leave and Absence returned 0 notifications
+[2025-08-15 08:00:12] Processing platform: LMS, URL: NULL
+[2025-08-15 08:00:12] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:00:12] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:00:12] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 08:00:12] Using RMS special authentication
+[2025-08-15 08:00:12] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
+
+[2025-08-15 08:00:12] RMS notifications parsing - response length: 2874
+
+[2025-08-15 08:00:12] No real RMS notifications found in response
+[2025-08-15 08:00:12] RMS parsing complete - found 0 unread notifications
+
+[2025-08-15 08:00:12] Platform RMS returned 0 notifications
+[2025-08-15 08:00:12] Processing platform: SIS, URL: NULL[2025-08-15 08:00:12] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 08:00:12] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 08:00:12] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 08:00:12] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 08:03:22] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-15 08:03:22] handleNotifications() called for username: ayub.mussa
+[2025-08-15 08:03:22] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:03:22] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:03:22] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 08:03:22] Using Leave Portal special authentication
+[2025-08-15 08:03:22] Leave Portal raw response (HTTP 200):
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+// Set current language for JavaScript use
+window.currentLang = "en";
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet"> 
+  <script src="https://kit.fontawesome.com/242d4b38d8.js" crossorigin="anonymous"></script> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="../Css/style.css"> 
+  <link rel="icon" href="../logo/logo1.png" type="image/png" class="logo">
+  <style>
+    .Nav-link{
+        width: 170px;
+    }
+     .profile-dropdown {
+        min-width: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    .profile-dropdown .dropdown-item {
+        padding: 10px 16px;
+        transition: background-color 0.2s ease;
+    }
+
+    .profile-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .profile-dropdown .dropdown-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .nav-profile.dropdown-toggle::after {
+        margin-left: 8px;
+    }
+
+    .nav-profile {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav-profile:hover {
+        color: #007bff !important;
+    }
+    
+    .notification-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 16px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .view-all-link {
+        display: block;
+
+[2025-08-15 08:03:22] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 08:03:22] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 08:03:22] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 08:03:22] No real notifications found for platform: Leave and Absence
+[2025-08-15 08:03:22] Starting notification filtering for user: ayub.mussa
+[2025-08-15 08:03:22] Total notifications before filtering: 0
+[2025-08-15 08:03:22] Total recorded actions: 0
+[2025-08-15 08:03:22] Total notifications after filtering: 0
+[2025-08-15 08:03:22] Platform Leave and Absence returned 0 notifications
+[2025-08-15 08:03:22] Processing platform: LMS, URL: NULL
+[2025-08-15 08:03:22] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:03:22] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:03:22] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 08:03:22] Using RMS special authentication
+[2025-08-15 08:03:22] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
+
+[2025-08-15 08:03:22] RMS notifications parsing - response length: 2874
+
+[2025-08-15 08:03:22] No real RMS notifications found in response
+[2025-08-15 08:03:22] RMS parsing complete - found 0 unread notifications
+
+[2025-08-15 08:03:22] Platform RMS returned 0 notifications
+[2025-08-15 08:03:22] Processing platform: SIS, URL: NULL[2025-08-15 08:03:22] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 08:03:22] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 08:03:23] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 08:03:23] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 08:03:33] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-15 08:03:33] handleNotifications() called for username: ayub.mussa
+[2025-08-15 08:03:33] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:03:33] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:03:33] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 08:03:33] Using Leave Portal special authentication
+[2025-08-15 08:03:33] Leave Portal raw response (HTTP 200):
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+// Set current language for JavaScript use
+window.currentLang = "en";
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet"> 
+  <script src="https://kit.fontawesome.com/242d4b38d8.js" crossorigin="anonymous"></script> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="../Css/style.css"> 
+  <link rel="icon" href="../logo/logo1.png" type="image/png" class="logo">
+  <style>
+    .Nav-link{
+        width: 170px;
+    }
+     .profile-dropdown {
+        min-width: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    .profile-dropdown .dropdown-item {
+        padding: 10px 16px;
+        transition: background-color 0.2s ease;
+    }
+
+    .profile-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .profile-dropdown .dropdown-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .nav-profile.dropdown-toggle::after {
+        margin-left: 8px;
+    }
+
+    .nav-profile {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav-profile:hover {
+        color: #007bff !important;
+    }
+    
+    .notification-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 16px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .view-all-link {
+        display: block;
+
+[2025-08-15 08:03:33] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 08:03:33] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 08:03:33] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 08:03:33] No real notifications found for platform: Leave and Absence
+[2025-08-15 08:03:33] Starting notification filtering for user: ayub.mussa
+[2025-08-15 08:03:33] Total notifications before filtering: 0
+[2025-08-15 08:03:33] Total recorded actions: 0
+[2025-08-15 08:03:33] Total notifications after filtering: 0
+[2025-08-15 08:03:33] Platform Leave and Absence returned 0 notifications
+[2025-08-15 08:03:33] Processing platform: LMS, URL: NULL
+[2025-08-15 08:03:33] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:03:33] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:03:33] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 08:03:33] Using RMS special authentication
+[2025-08-15 08:03:34] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
+
+[2025-08-15 08:03:34] RMS notifications parsing - response length: 2874
+
+[2025-08-15 08:03:34] No real RMS notifications found in response
+[2025-08-15 08:03:34] RMS parsing complete - found 0 unread notifications
+
+[2025-08-15 08:03:34] Platform RMS returned 0 notifications
+[2025-08-15 08:03:34] Processing platform: SIS, URL: NULL[2025-08-15 08:03:34] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 08:03:34] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 08:03:34] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 08:03:34] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 08:09:48] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 08:09:48] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-15 08:09:48] handleNotifications() called for username: ayub.mussa
+[2025-08-15 08:09:48] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:09:48] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:09:48] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 08:09:48] Using Leave Portal special authentication
+[2025-08-15 08:09:48] Leave Portal raw response (HTTP 200):
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+// Set current language for JavaScript use
+window.currentLang = "en";
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet"> 
+  <script src="https://kit.fontawesome.com/242d4b38d8.js" crossorigin="anonymous"></script> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="../Css/style.css"> 
+  <link rel="icon" href="../logo/logo1.png" type="image/png" class="logo">
+  <style>
+    .Nav-link{
+        width: 170px;
+    }
+     .profile-dropdown {
+        min-width: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    .profile-dropdown .dropdown-item {
+        padding: 10px 16px;
+        transition: background-color 0.2s ease;
+    }
+
+    .profile-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .profile-dropdown .dropdown-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .nav-profile.dropdown-toggle::after {
+        margin-left: 8px;
+    }
+
+    .nav-profile {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav-profile:hover {
+        color: #007bff !important;
+    }
+    
+    .notification-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 16px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .view-all-link {
+        display: block;
+
+[2025-08-15 08:09:48] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 08:09:48] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 08:09:48] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 08:09:48] No real notifications found for platform: Leave and Absence
+[2025-08-15 08:09:48] Starting notification filtering for user: ayub.mussa
+[2025-08-15 08:09:48] Total notifications before filtering: 0
+[2025-08-15 08:09:48] Total recorded actions: 0
+[2025-08-15 08:09:48] Total notifications after filtering: 0
+[2025-08-15 08:09:48] Platform Leave and Absence returned 0 notifications
+[2025-08-15 08:09:48] Processing platform: LMS, URL: NULL
+[2025-08-15 08:09:48] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:09:48] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:09:48] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 08:09:48] Using RMS special authentication
+[2025-08-15 08:09:49] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
+
+[2025-08-15 08:09:49] RMS notifications parsing - response length: 2874
+
+[2025-08-15 08:09:49] No real RMS notifications found in response
+[2025-08-15 08:09:49] RMS parsing complete - found 0 unread notifications
+
+[2025-08-15 08:09:49] Platform RMS returned 0 notifications
+[2025-08-15 08:09:49] Processing platform: SIS, URL: NULL[2025-08-15 08:09:49] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 08:09:49] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 08:09:49] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 08:10:10] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-15 08:10:10] handleNotifications() called for username: ayub.mussa
+[2025-08-15 08:10:10] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:10:10] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:10:10] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 08:10:10] Using Leave Portal special authentication
+[2025-08-15 08:10:11] Leave Portal raw response (HTTP 200):
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+// Set current language for JavaScript use
+window.currentLang = "en";
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet"> 
+  <script src="https://kit.fontawesome.com/242d4b38d8.js" crossorigin="anonymous"></script> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="../Css/style.css"> 
+  <link rel="icon" href="../logo/logo1.png" type="image/png" class="logo">
+  <style>
+    .Nav-link{
+        width: 170px;
+    }
+     .profile-dropdown {
+        min-width: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    .profile-dropdown .dropdown-item {
+        padding: 10px 16px;
+        transition: background-color 0.2s ease;
+    }
+
+    .profile-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .profile-dropdown .dropdown-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .nav-profile.dropdown-toggle::after {
+        margin-left: 8px;
+    }
+
+    .nav-profile {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav-profile:hover {
+        color: #007bff !important;
+    }
+    
+    .notification-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 16px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .view-all-link {
+        display: block;
+
+[2025-08-15 08:10:11] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 08:10:11] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 08:10:11] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 08:10:11] No real notifications found for platform: Leave and Absence
+[2025-08-15 08:10:11] Starting notification filtering for user: ayub.mussa
+[2025-08-15 08:10:11] Total notifications before filtering: 0
+[2025-08-15 08:10:11] Total recorded actions: 0
+[2025-08-15 08:10:11] Total notifications after filtering: 0
+[2025-08-15 08:10:11] Platform Leave and Absence returned 0 notifications
+[2025-08-15 08:10:11] Processing platform: LMS, URL: NULL
+[2025-08-15 08:10:11] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:10:11] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:10:11] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 08:10:11] Using RMS special authentication
+[2025-08-15 08:10:12] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
+
+[2025-08-15 08:10:12] RMS notifications parsing - response length: 2874
+
+[2025-08-15 08:10:12] No real RMS notifications found in response
+[2025-08-15 08:10:12] RMS parsing complete - found 0 unread notifications
+
+[2025-08-15 08:10:12] Platform RMS returned 0 notifications
+[2025-08-15 08:10:12] Processing platform: SIS, URL: NULL[2025-08-15 08:10:12] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 08:10:12] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 08:10:12] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 08:10:12] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 08:17:39] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-15 08:17:39] handleNotifications() called for username: ayub.mussa
+[2025-08-15 08:17:39] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:17:39] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:17:39] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 08:17:39] Using Leave Portal special authentication
+[2025-08-15 08:17:39] Leave Portal raw response (HTTP 200):
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+// Set current language for JavaScript use
+window.currentLang = "en";
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet"> 
+  <script src="https://kit.fontawesome.com/242d4b38d8.js" crossorigin="anonymous"></script> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="../Css/style.css"> 
+  <link rel="icon" href="../logo/logo1.png" type="image/png" class="logo">
+  <style>
+    .Nav-link{
+        width: 170px;
+    }
+     .profile-dropdown {
+        min-width: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    .profile-dropdown .dropdown-item {
+        padding: 10px 16px;
+        transition: background-color 0.2s ease;
+    }
+
+    .profile-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .profile-dropdown .dropdown-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .nav-profile.dropdown-toggle::after {
+        margin-left: 8px;
+    }
+
+    .nav-profile {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav-profile:hover {
+        color: #007bff !important;
+    }
+    
+    .notification-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 16px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .view-all-link {
+        display: block;
+
+[2025-08-15 08:17:39] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 08:17:39] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 08:17:39] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 08:17:39] No real notifications found for platform: Leave and Absence
+[2025-08-15 08:17:39] Starting notification filtering for user: ayub.mussa
+[2025-08-15 08:17:39] Total notifications before filtering: 0
+[2025-08-15 08:17:39] Total recorded actions: 0
+[2025-08-15 08:17:39] Total notifications after filtering: 0
+[2025-08-15 08:17:39] Platform Leave and Absence returned 0 notifications
+[2025-08-15 08:17:39] Processing platform: LMS, URL: NULL
+[2025-08-15 08:17:39] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:17:39] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:17:39] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 08:17:39] Using RMS special authentication
+[2025-08-15 08:17:39] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
+
+[2025-08-15 08:17:39] RMS notifications parsing - response length: 2874
+
+[2025-08-15 08:17:39] No real RMS notifications found in response
+[2025-08-15 08:17:39] RMS parsing complete - found 0 unread notifications
+
+[2025-08-15 08:17:39] Platform RMS returned 0 notifications
+[2025-08-15 08:17:39] Processing platform: SIS, URL: NULL[2025-08-15 08:17:39] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 08:17:40] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 08:17:40] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 08:17:40] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 08:17:42] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-15 08:17:42] handleNotifications() called for username: ayub.mussa
+[2025-08-15 08:17:42] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:17:42] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 08:17:42] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 08:17:42] Using Leave Portal special authentication
+[2025-08-15 08:17:42] Leave Portal raw response (HTTP 200):
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+// Set current language for JavaScript use
+window.currentLang = "en";
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet"> 
+  <script src="https://kit.fontawesome.com/242d4b38d8.js" crossorigin="anonymous"></script> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="../Css/style.css"> 
+  <link rel="icon" href="../logo/logo1.png" type="image/png" class="logo">
+  <style>
+    .Nav-link{
+        width: 170px;
+    }
+     .profile-dropdown {
+        min-width: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    .profile-dropdown .dropdown-item {
+        padding: 10px 16px;
+        transition: background-color 0.2s ease;
+    }
+
+    .profile-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .profile-dropdown .dropdown-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .nav-profile.dropdown-toggle::after {
+        margin-left: 8px;
+    }
+
+    .nav-profile {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav-profile:hover {
+        color: #007bff !important;
+    }
+    
+    .notification-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 16px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .view-all-link {
+        display: block;
+
+[2025-08-15 08:17:42] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 08:17:42] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 08:17:42] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 08:17:42] No real notifications found for platform: Leave and Absence
+[2025-08-15 08:17:42] Starting notification filtering for user: ayub.mussa
+[2025-08-15 08:17:42] Total notifications before filtering: 0
+[2025-08-15 08:17:42] Total recorded actions: 0
+[2025-08-15 08:17:42] Total notifications after filtering: 0
+[2025-08-15 08:17:42] Platform Leave and Absence returned 0 notifications
+[2025-08-15 08:17:42] Processing platform: LMS, URL: NULL
+[2025-08-15 08:17:42] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:17:42] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 08:17:42] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 08:17:42] Using RMS special authentication
+[2025-08-15 08:17:43] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
+
+[2025-08-15 08:17:43] RMS notifications parsing - response length: 2874
+
+[2025-08-15 08:17:43] No real RMS notifications found in response
+[2025-08-15 08:17:43] RMS parsing complete - found 0 unread notifications
+
+[2025-08-15 08:17:43] Platform RMS returned 0 notifications
+[2025-08-15 08:17:43] Processing platform: SIS, URL: NULL[2025-08-15 08:17:43] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 08:17:43] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 08:17:43] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 08:17:43] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 09:07:06] Request: GET to endpoint 'notifications' - Query: endpoint=notifications&username=ayub.mussa
+
+[2025-08-15 09:07:06] handleNotifications() called for username: ayub.mussa
+[2025-08-15 09:07:06] Processing platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 09:07:06] fetchNotificationsFromPlatform called for platform: Leave and Absence, URL: https://leave.final.digital/notifications/all_notifications.php
+[2025-08-15 09:07:06] Credentials found for user: ayub.mussa, platform: Leave and Absence
+[2025-08-15 09:07:06] Using Leave Portal special authentication
+[2025-08-15 09:07:06] Leave Portal raw response (HTTP 200):
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+// Set current language for JavaScript use
+window.currentLang = "en";
+</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet"> 
+  <script src="https://kit.fontawesome.com/242d4b38d8.js" crossorigin="anonymous"></script> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="../Css/style.css"> 
+  <link rel="icon" href="../logo/logo1.png" type="image/png" class="logo">
+  <style>
+    .Nav-link{
+        width: 170px;
+    }
+     .profile-dropdown {
+        min-width: 200px;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-top: 8px;
+    }
+
+    .profile-dropdown .dropdown-item {
+        padding: 10px 16px;
+        transition: background-color 0.2s ease;
+    }
+
+    .profile-dropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .profile-dropdown .dropdown-item i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .nav-profile.dropdown-toggle::after {
+        margin-left: 8px;
+    }
+
+    .nav-profile {
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+
+    .nav-profile:hover {
+        color: #007bff !important;
+    }
+    
+    .notification-footer {
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 10px 16px;
+        border-radius: 0 0 8px 8px;
+    }
+
+    .view-all-link {
+        display: block;
+
+[2025-08-15 09:07:06] Leave Portal response contains: NO - Ibrahim Avci not found
+[2025-08-15 09:07:06] Leave Portal response contains: NO - flex-grow-1 not found
+[2025-08-15 09:07:06] Leave Portal response contains: NO - requires your review not found
+[2025-08-15 09:07:06] No real notifications found for platform: Leave and Absence
+[2025-08-15 09:07:06] Starting notification filtering for user: ayub.mussa
+[2025-08-15 09:07:06] Total notifications before filtering: 0
+[2025-08-15 09:07:06] Total recorded actions: 0
+[2025-08-15 09:07:06] Total notifications after filtering: 0
+[2025-08-15 09:07:06] Platform Leave and Absence returned 0 notifications
+[2025-08-15 09:07:06] Processing platform: LMS, URL: NULL
+[2025-08-15 09:07:06] Processing platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 09:07:06] fetchNotificationsFromPlatform called for platform: RMS, URL: https://rms.final.digital/Dashboard/notifications.php
+[2025-08-15 09:07:06] Credentials found for user: ayub.mussa, platform: RMS
+[2025-08-15 09:07:06] Using RMS special authentication
+[2025-08-15 09:07:06] RMS raw response (HTTP 200):
+ 
+
+<!-- HTML Part -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login</title>
+  <link rel="icon" href="Imgs/logo copy.png" type="image/png">
+  <link rel="stylesheet" href="CSS/index.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://kit.fontawesome.com/97ebdf5864.js" crossorigin="anonymous"></script>
+  <style>
+    .countdown-container {
+      background: #ffe6e6;
+      border: 1px solid #ff9999;
+      border-radius: 5px;
+      padding: 15px;
+      margin: 10px 0;
+      text-align: center;
+    }
+    
+    .countdown-timer {
+      font-size: 24px;
+      font-weight: bold;
+      color: #cc0000;
+      margin: 10px 0;
+    }
+    
+    .countdown-text {
+      color: #cc0000;
+      font-size: 14px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 8px;
+      background: #ffcccc;
+      border-radius: 4px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff4444, #cc0000);
+      transition: width 1s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="Wrapper">
+    <div class="pic">
+      <img src="Imgs/Final_Logo_2.png" alt="logo">
+    </div>
+    <h1>RMS</h1>
+    <div class="form-container">
+      <form action="index.php" method="POST">
+        <div class="form">
+          <i class="fas fa-user"></i>
+          <input type="text" name="username" autocomplete="off" required />
+          <label for="username" class="label-name">
+            <span class="content-name">Username</span>
+          </label>
+        </div>
+        <div class="form">
+          <input type="password" name="password_hash" autocomplete="off" required id="password" />
+          <label for="password" class="label-name">
+            <span class="content-name">Password</span>
+          </label>
+          <button type="bu
+
+[2025-08-15 09:07:06] RMS notifications parsing - response length: 2874
+
+[2025-08-15 09:07:06] No real RMS notifications found in response
+[2025-08-15 09:07:06] RMS parsing complete - found 0 unread notifications
+
+[2025-08-15 09:07:06] Platform RMS returned 0 notifications
+[2025-08-15 09:07:06] Processing platform: SIS, URL: NULL[2025-08-15 09:07:06] Request: GET to endpoint 'announcements' - Query: endpoint=announcements
+[2025-08-15 09:07:07] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-15
+[2025-08-15 09:07:07] Request: GET to endpoint 'dining-menu-today' - Query: endpoint=dining-menu-today&date=2025-08-16
+[2025-08-15 09:07:07] Request: GET to endpoint 'platforms' - Query: endpoint=platforms
+[2025-08-15 09:57:24] Request: POST to endpoint 'login' - Query: endpoint=login

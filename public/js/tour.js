@@ -57,16 +57,28 @@ class PlatformTour {
     createTourSteps() {
         this.tourSteps = [
             {
-                target: '#notification-section',
+                target: '#notification-btn',
                 titleKey: 'tour-notifications-title',
                 contentKey: 'tour-notifications-content',
-                position: 'left'
+                position: 'bottom'
             },
             {
-                target: '.platforms-container',
+                target: '#platforms-section',
                 titleKey: 'tour-platforms-title',
                 contentKey: 'tour-platforms-content',
                 position: 'right'
+            },
+            {
+                target: '#dining-menu-section',
+                titleKey: 'tour-dining-menu-title',
+                contentKey: 'tour-dining-menu-content',
+                position: 'left'
+            },
+            {
+                target: '#announcements-section',
+                titleKey: 'tour-announcements-title',
+                contentKey: 'tour-announcements-content',
+                position: 'left'
             },
             {
                 target: '#user-dropdown-btn',
@@ -193,9 +205,28 @@ class PlatformTour {
         // Remove previous highlights
         document.querySelectorAll('.tour-highlight').forEach(el => {
             el.classList.remove('tour-highlight');
-            el.style.boxShadow = '';
-            el.style.background = '';
+            // Restore original styles instead of clearing them
+            if (el.dataset.originalBoxShadow !== undefined) {
+                el.style.boxShadow = el.dataset.originalBoxShadow;
+                delete el.dataset.originalBoxShadow;
+            } else {
+                el.style.boxShadow = '';
+            }
+            if (el.dataset.originalBackground !== undefined) {
+                el.style.background = el.dataset.originalBackground;
+                delete el.dataset.originalBackground;
+            } else {
+                el.style.background = '';
+            }
         });
+
+        // Store original styles before highlighting
+        if (!element.dataset.originalBoxShadow) {
+            element.dataset.originalBoxShadow = element.style.boxShadow || '';
+        }
+        if (!element.dataset.originalBackground) {
+            element.dataset.originalBackground = element.style.background || '';
+        }
 
         // Add highlight to current element
         element.classList.add('tour-highlight');
@@ -222,11 +253,11 @@ class PlatformTour {
         
         const tooltipContent = `
             <div style="margin-bottom: 15px;">
-                <h3 style="margin: 0 0 10px 0; color: #333; font-size: 16px;">${title}</h3>
+                <h3 style="margin: 0 0 10px 0; color: #000000; font-size: 16px; font-weight: bold;">${title}</h3>
                 <p style="margin: 0; color: #666; line-height: 1.5; font-size: 14px;">${content}</p>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #999;">${this.currentStep + 1} of ${this.tourSteps.length}</span>
+                <span style="font-size: 12px; color: #666;">${this.currentStep + 1} of ${this.tourSteps.length}</span>
                 <div style="display: flex; gap: 8px;">
                     <button id="tour-skip" class="tour-btn tour-btn-secondary" style="font-size: 12px; padding: 6px 12px;">${this.getTranslation('tour-skip')}</button>
                     <button id="tour-prev" class="tour-btn tour-btn-secondary" style="display: ${this.currentStep === 0 ? 'none' : 'inline-block'};">${this.getTranslation('tour-previous')}</button>
@@ -376,6 +407,13 @@ class PlatformTour {
 
         // Remove event listeners
         document.removeEventListener('keydown', this.handleKeydown.bind(this));
+        
+        // Ensure notifications are properly displayed after tour ends
+        setTimeout(() => {
+            if (window.loadNotifications && typeof window.loadNotifications === 'function') {
+                window.loadNotifications();
+            }
+        }, 100);
     }
 
     /**
@@ -393,8 +431,19 @@ class PlatformTour {
     removeHighlights() {
         document.querySelectorAll('.tour-highlight').forEach(el => {
             el.classList.remove('tour-highlight');
-            el.style.boxShadow = '';
-            el.style.background = '';
+            // Restore original styles instead of clearing them
+            if (el.dataset.originalBoxShadow !== undefined) {
+                el.style.boxShadow = el.dataset.originalBoxShadow;
+                delete el.dataset.originalBoxShadow;
+            } else {
+                el.style.boxShadow = '';
+            }
+            if (el.dataset.originalBackground !== undefined) {
+                el.style.background = el.dataset.originalBackground;
+                delete el.dataset.originalBackground;
+            } else {
+                el.style.background = '';
+            }
         });
     }
 
@@ -424,9 +473,13 @@ class PlatformTour {
         const fallbackTranslations = {
             'en': {
                 'tour-notifications-title': 'Notifications Center',
-                'tour-notifications-content': 'Welcome to your notifications center! Here you\'ll see important updates from all your connected platforms including RMS, Leave Portal, SIS, and LMS.',
+                'tour-notifications-content': 'Click the bell icon to view your notifications from all connected platforms including RMS, Leave Portal, SIS, and LMS.',
                 'tour-platforms-title': 'Platform Access',
                 'tour-platforms-content': 'This is where you can access all your university platforms. Click on any platform card to open it in a new tab.',
+                'tour-dining-menu-title': 'Dining Menu',
+                'tour-dining-menu-content': 'Check today\'s dining menu and meal schedules. Click on the card to view full details including breakfast and lunch times.',
+                'tour-announcements-title': 'Announcements',
+                'tour-announcements-content': 'Stay updated with the latest announcements from administrators. Click on any announcement to read the full details.',
                 'tour-settings-title': 'User Settings',
                 'tour-settings-content': 'Click here to access your account settings, change language, toggle dark mode, or log out.',
                 'tour-navigation-title': 'Platform Navigation',
@@ -483,7 +536,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Add tour restart functionality to user dropdown
+/* Add tour restart functionality to user dropdown
 document.addEventListener('DOMContentLoaded', function() {
     const userDropdown = document.querySelector('.user-dropdown-content');
     if (userDropdown) {
@@ -534,3 +587,4 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 });
+*/

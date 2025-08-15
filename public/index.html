@@ -2,23 +2,81 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>FINAL GLOBAL</title>
-    <link rel="stylesheet" href="css/styles.css?v=20250731">
+    <link rel="stylesheet" href="css/styles.css?v=53">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+    /*
+     * Responsive mobile adjustments
+     * Ensures all containers, cards, and buttons are full width and scrollable on mobile
+     */
+    @media (max-width: 600px) {
+      html, body {
+        width: 100vw !important;
+        min-width: 0 !important;
+        max-width: 100vw !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+      }
+      .container, main, .section, .sections-container, .platforms-container, .right-side-container, .dining-menu-container, .announcements-container, .card, .dining-menu-card, .announcement-card, .notification-card, .btn, .btn-primary, .btn-logout, .user-dropdown-content, .notification-dropdown-content, header, footer {
+        width: 100vw !important;
+        min-width: 0 !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+        position: static !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      .btn, .btn-primary, .btn-logout {
+        width: 100% !important;
+        margin-bottom: 8px !important;
+      }
+      .sections-container, .platforms-container, .right-side-container {
+        flex-direction: column !important;
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+      }
+    }
+    </style>
 </head>
 <body>
     <header>
         <div class="logo">
             <img src="img/fiu9.jpg" alt="Logo" style="height: 48px;">
         </div>
-        <h1 data-translate="welcome-to-platform">Final Global</h1>
-        <div class="header-right">
+        <div class="header-title-section">
+            <h1 data-translate="welcome-to-platform">Final Global</h1>
             <div id="user-info">
                 <span id="username"></span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="notification-dropdown">
+                <button class="notification-btn" id="notification-btn">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-badge" id="notification-badge" style="display: none;">0</span>
+                </button>
+                <div class="notification-dropdown-content" id="notification-dropdown-content">
+                    <div class="notification-header">
+                        <h3 data-translate="notifications">Notifications</h3>
+                    </div>
+                    <div id="notification-list" class="notification-list">
+                        <!-- Notifications will be loaded dynamically -->
+                    </div>
+                </div>
             </div>
             <div class="user-dropdown">
                 <button class="user-dropdown-btn" id="user-dropdown-btn" data-translate="options">Options</button>
                 <div class="user-dropdown-content" id="user-dropdown-content">
+                    <button id="admin-panel-btn" class="btn" style="display:none;">
+                        <span class="fa fa-shield"></span> Admin Panel
+                    </button>
                     <button class="language-btn" id="language-btn">
                         <span id="current-language">English</span>
                     </button>
@@ -39,53 +97,77 @@
     </header>
     <div class="container">
         <main>
-            <div style="display: flex; gap: 84px; align-items: flex-start;">
-                <div style="flex: 1; min-width: 320px;">
-                    <div id="login-section" class="section">
-                        <h2 data-translate="please-login">Please Login</h2>
-                        <p data-translate="need-login">You need to login to access the platforms.</p>
-                        <a href="login.html" class="btn btn-primary" data-translate="go-to-login">Go to Login</a>
-                    </div>
-                    <div id="platforms-section" class="section hidden">
-                        <h2 data-translate="select-platform">Select a Platform</h2>
-                        <p data-translate="choose-platform">Choose one of the following platforms to access:</p>
-                                    <!-- Add notifications container for login errors/warnings -->
-                                    <div id="login-notifications" class="login-notifications"></div>
-                        <div class="platforms-container">
-                            <!-- Platforms will be loaded dynamically from API -->
-                        </div>
+            <div id="login-section" class="section">
+                <h2 data-translate="please-login">Please Login</h2>
+                <p data-translate="need-login">You need to login to access the platforms.</p>
+                <a href="login.html" class="btn btn-primary" data-translate="go-to-login">Go to Login</a>
+            </div>
+            <div class="sections-container hidden" id="sections-container">
+                <div id="platforms-section" class="section">
+                    <h2 data-translate="select-platform">Select a Platform</h2>
+                    <p data-translate="choose-platform">Choose one of the following platforms to access:</p>
+                    <!-- Add notifications container for login errors/warnings -->
+                    <div id="login-notifications" class="login-notifications"></div>
+                    <div class="platforms-container">
+                        <!-- Platforms will be loaded dynamically from API -->
                     </div>
                 </div>
-                <div style="flex: 1; min-width: 320px;">
-                    <section id="notification-section" class="notification-section" style="background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px;">
-                        <h2 data-translate="notifications">Notifications</h2>
-                        <div id="notification-list" class="notification-list">
-                            <!-- Notifications will be loaded dynamically -->
+
+                <div class="right-side-container">
+                    <div id="dining-menu-section" class="section">
+                        <h2 data-translate="dining-menu">Dining Menu</h2>
+                        <p data-translate="dining-menu-description">Dining menu and meal schedules:</p>
+                        <div class="dining-menu-container">
+                            <button class="dining-menu-nav prev" id="dining-prev-btn" style="display: none;">‹</button>
+                            <button class="dining-menu-nav next" id="dining-next-btn" style="display: none;">›</button>
+                            <div class="dining-menu-slider" id="dining-menu-slider">
+                                <!-- Dining menu slides will be loaded dynamically from API -->
+                            </div>
+                            <div class="dining-menu-dots" id="dining-menu-dots">
+                                <!-- Navigation dots will be generated dynamically -->
+                            </div>
                         </div>
-                    </section>
+                    </div>
+
+                    <div id="announcements-section" class="section">
+                        <h2 data-translate="announcements">Announcements</h2>
+                        <p data-translate="announcements-description">Latest announcements from administrators:</p>
+                        <div class="announcements-container">
+                            <button class="announcements-nav prev" id="announcements-prev-btn" style="display: none;">‹</button>
+                            <button class="announcements-nav next" id="announcements-next-btn" style="display: none;">›</button>
+                            <div class="announcements-slider" id="announcements-slider">
+                                <!-- Announcements slides will be loaded dynamically from API -->
+                            </div>
+                            <div class="announcements-dots" id="announcements-dots">
+                                <!-- Navigation dots will be generated dynamically -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
 
         <footer>
-            <p data-translate="copyright">&copy; 2025 Platform Navigation System</p>
+            <p data-translate="copyright">&copy; 2025 Final Global System</p>
         </footer>
     </div>
 
     <!-- LMS Sub-Platforms Modal -->
     <div id="lms-modal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
-        <div class="modal-content" style="background:#fff; border-radius:8px; max-width:600px; width:90%; margin:40px auto; padding:32px; position:relative;">
+        <div class="modal-content" style="background:#fff; border-radius:8px; max-width:600px; width:90%; max-height:80vh; margin:40px auto; padding:32px; position:relative; display:flex; flex-direction:column;">
             <button id="close-lms-modal" style="position:absolute; top:12px; right:16px; font-size:24px; background:none; border:none; cursor:pointer;">&times;</button>
-            <h2 style="margin-bottom:24px;">LMS Faculties / Modules</h2>
-            <div id="lms-subplatforms-list">
+            <h2 style="margin-bottom:24px; flex-shrink:0;">LMS Faculties / Modules</h2>
+            <div id="lms-subplatforms-list" style="flex:1; overflow-y:auto; padding-right:8px;">
                 <!-- Sub-platforms will be loaded here -->
             </div>
         </div>
     </div>
 
-    <script src="js/main.js"></script>
-    <link rel="stylesheet" href="css/styles.css?v=20250749">
-    <script src="js/language.js?v=20250755"></script>
-    <script src="js/tour.js?v=20250752"></script>
+    <script src="js/main.js?v=15"></script>
+    <script src="js/user_admin_link.js?v=1"></script>
+    <link rel="stylesheet" href="css/styles.css?v=53">
+    <script src="js/language.js?v=11"></script>
+    <script src="js/tour.js?v=8"></script>
+    <script src="js/login.js?v=7"></script>
 </body>
 </html>

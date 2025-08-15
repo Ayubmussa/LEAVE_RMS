@@ -844,7 +844,7 @@ function injectProxyJavaScript($content, $platform, $username, $proxyBaseUrl, $s
                         endpointName = window.PROXY_CONFIG.platform + "_dashboard_proxy";
                     }
                     
-                    var proxyUrl = window.PROXY_CONFIG.proxyBaseUrl + "&endpoint=" + endpointName + "&username=" + encodeURIComponent(window.PROXY_CONFIG.username);
+                    var proxyUrl = window.PROXY_CONFIG.proxyBaseUrl + "?endpoint=" + endpointName + "&username=" + encodeURIComponent(window.PROXY_CONFIG.username);
                     
                     if (endpointName === "lms_ajax_proxy") {
                         proxyUrl += "&apipath=" + encodeURIComponent(url);
@@ -888,7 +888,7 @@ function injectProxyJavaScript($content, $platform, $username, $proxyBaseUrl, $s
                         endpointName = window.PROXY_CONFIG.platform + "_dashboard_proxy";
                     }
                     
-                    var proxyUrl = window.PROXY_CONFIG.proxyBaseUrl + "&endpoint=" + endpointName + "&username=" + encodeURIComponent(window.PROXY_CONFIG.username);
+                    var proxyUrl = window.PROXY_CONFIG.proxyBaseUrl + "?endpoint=" + endpointName + "&username=" + encodeURIComponent(window.PROXY_CONFIG.username);
                     
                     if (endpointName === "lms_ajax_proxy") {
                         proxyUrl += "&apipath=" + encodeURIComponent(input);
@@ -1088,6 +1088,12 @@ try {
                 case 'notifications':
                     handleNotifications();
                     break;
+                case 'announcements':
+                    handleAnnouncements();
+                    break;
+                case 'dining-menu-today':
+                    handleDiningMenuToday();
+                    break;
                 case 'delete_notification':
                     handleDeleteNotification();
                     break;
@@ -1100,12 +1106,14 @@ try {
                 case 'authenticate_platform':
                     handleAuthenticatePlatform();
                     break;
-                case 'rms_dashboard_proxy':
-                    handleRmsDashboardProxy();
+
+                case 'rms_direct_auth':
+                    handleRmsDirectAuth();
                     break;
-                case 'rms_notifications_proxy':
-                    handleRmsNotificationsProxy();
+                case 'rms_notifications_direct_auth':
+                    handleRmsNotificationsDirectAuth();
                     break;
+
                 case 'leave_portal_proxy':
                     handleLeavePortalDashboardProxy();
                     break;
@@ -1130,6 +1138,9 @@ try {
                     break;
                 case 'lms_subplatform_direct_link':
                     handleLmsSubplatformDirectLink();
+                    break;
+                case 'lms_direct_auth':
+                    handleLmsDirectAuth();
                     break;
                 case 'lms_ajax_proxy':
                     handleLmsAjaxProxy();
@@ -1355,8 +1366,10 @@ function handleLmsSubplatformDirectLink() {
 
         // Perform the login
         $loginData = [
+            'anchor' => '',
             'username' => $credentials['platform_username'],
-            'password' => $credentials['platform_password']
+            'password' => $credentials['platform_password'],
+            'rememberusername' => '0'
         ];
         if ($logintoken) {
 
@@ -1663,6 +1676,54 @@ function authenticateToRMS($credentials) {
             
     }
 }
+
+/**
+ * Validate RMS session by testing access to a protected page
+ * @param array $credentials User credentials
+ * @param string $cookieFile Path to cookie file
+ * @param string $targetPage Target page to validate access
+ * @return bool True if session is valid, false otherwise
+ */
+function validateRMSSession($credentials, $cookieFile, $targetPage = 'Dashboard/home.php') {
+        $logFile = __DIR__ . '/php_errors.log';
+        
+        // Test access to the target page with existing cookies
+        $baseUrl = 'https://rms.final.digital';
+        $testUrl = $baseUrl . '/' . ltrim($targetPage, '/');
+        
+        $ch = curl_init($testUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
+        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        ]);
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $finalUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+        curl_close($ch);
+        
+        // Log session validation attempt
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS Session validation for user: " . $credentials['platform_username'] . ", HTTP Code: $httpCode, Final URL: $finalUrl", FILE_APPEND);
+        
+        // Check if session is valid
+        $hasLoginForm = strpos($response, 'login') !== false || strpos($response, 'Login') !== false;
+        $hasDashboard = strpos($response, 'dashboard') !== false || strpos($response, 'Dashboard') !== false;
+        $redirectedToLogin = strpos($finalUrl, 'index.php') !== false && $hasLoginForm;
+        
+        if ($httpCode === 200 && !$redirectedToLogin && ($hasDashboard || !$hasLoginForm)) {
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS session is valid for user: " . $credentials['platform_username'], FILE_APPEND);
+                return true;
+        } else {
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS session is invalid/expired for user: " . $credentials['platform_username'], FILE_APPEND);
+                return false;
+        }
+}
+
 /**
  * Authenticate to Leave Portal
  * 
@@ -2161,113 +2222,515 @@ function authenticateToGenericPlatform($username, $password, $platformName, $pla
 // RMS DASHBOARD PROXY FUNCTIONS
 // =============================================================================
 
+
+
 /**
- * Handle RMS dashboard redirect requests (Simple redirect to real portal)
+ * RMS Direct Authentication - Authenticates user and redirects to RMS with session
+ * This function handles the transition from proxy to direct access with session validation
  */
-
-function handleRmsDashboardProxy() {
-
+function handleRmsDirectAuth() {
         global $method;
 
-        if (!in_array($method, ['GET', 'POST'])) {
-
+        if ($method !== 'GET') {
                 http_response_code(405);
                 echo json_encode(['error' => 'Method not allowed']);
                 return;
-            
-    }
+        }
 
         $username = $_GET['username'] ?? '';
-        $page = $_GET['page'] ?? 'Dashboard/home.php';
+        $targetPage = $_GET['page'] ?? 'Dashboard/home.php';
 
         if (!$username) {
-
                 http_response_code(400);
                 echo json_encode(['error' => 'Username is required']);
                 return;
-            
-    }
+        }
 
-        // Get RMS credentials and authenticate
+        // Get RMS credentials
         $credentials = get_platform_credentials($username, 'RMS');
         if (!$credentials) {
-
                 http_response_code(401);
                 echo json_encode(['error' => 'No RMS credentials found']);
                 return;
-            
-    }
+        }
 
-        $authResult = authenticateToRMS($credentials);
-        if (!$authResult['success']) {
+        // Log the direct auth attempt
+        $logFile = __DIR__ . '/php_errors.log';
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS Direct Auth attempt for user: $username, target: $targetPage", FILE_APPEND);
 
-                http_response_code(401);
-                echo json_encode(['error' => 'RMS authentication failed: ' . $authResult['message']]);
+        // Get the cookie file path
+        $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_RMS.txt';
+        
+        // Check if we have an existing session and validate it
+        $sessionValid = false;
+        if (file_exists($cookieFile)) {
+                $sessionValid = validateRMSSession($credentials, $cookieFile, $targetPage);
+        }
+        
+        // If session is not valid, re-authenticate
+        if (!$sessionValid) {
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Session invalid or expired, re-authenticating user: $username", FILE_APPEND);
+                
+                // Force re-authentication by removing old cookie file
+                if (file_exists($cookieFile)) {
+                        unlink($cookieFile);
+                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Removed old cookie file for user: $username", FILE_APPEND);
+                }
+                
+                // Authenticate to RMS
+                $authResult = authenticateToRMS($credentials);
+                if (!$authResult['success']) {
+                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS authentication failed for user: $username - " . $authResult['message'], FILE_APPEND);
+                        http_response_code(401);
+                        echo json_encode(['error' => 'RMS authentication failed: ' . $authResult['message']]);
+                        return;
+                }
+                
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS re-authentication successful for user: $username", FILE_APPEND);
+        } else {
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Existing session valid for user: $username", FILE_APPEND);
+        }
+
+        // Read and parse the cookie file
+        if (!file_exists($cookieFile)) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Session cookie file not found']);
                 return;
-            
-    }
+        }
 
-        // Build RMS URL
+        $cookieContent = file_get_contents($cookieFile);
+        $cookies = [];
+        
+        // Parse Netscape format cookie file
+        $lines = explode("\n", $cookieContent);
+        foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line) || $line[0] === '#') continue;
+                
+                $parts = explode("\t", $line);
+                if (count($parts) >= 7) {
+                        $domain = $parts[0];
+                        $path = $parts[2];
+                        $secure = $parts[3];
+                        $expiry = $parts[4];
+                        $name = $parts[5];
+                        $value = $parts[6];
+                        
+                        // Only include cookies for rms.final.digital
+                        if ($domain === 'rms.final.digital' || $domain === '.rms.final.digital') {
+                                $cookies[] = "$name=$value";
+                        }
+                }
+        }
+
+        if (empty($cookies)) {
+                http_response_code(500);
+                echo json_encode(['error' => 'No valid session cookies found']);
+                return;
+        }
+
+        // Build the target URL
         $baseUrl = 'https://rms.final.digital';
-        $rmsUrl = $baseUrl . '/' . ltrim($page, '/');
+        $targetUrl = $baseUrl . '/' . ltrim($targetPage, '/');
         
         // Add query parameters from current request
         $queryParams = $_GET;
         unset($queryParams['endpoint'], $queryParams['username'], $queryParams['page']);
         if (!empty($queryParams)) {
+                $targetUrl .= (strpos($targetUrl, '?') !== false ? '&' : '?') . http_build_query($queryParams);
+        }
 
-                $rmsUrl .= (strpos($rmsUrl, '?') !== false ? '&' : '?') . http_build_query($queryParams);
-            
-    }
+        // Log successful authentication
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS Direct Auth successful for user: $username, redirecting to: $targetUrl", FILE_APPEND);
 
-        // Fetch content with authentication
-        $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_RMS.txt';
+        // Set cookies in the browser and redirect
+        foreach ($cookies as $cookie) {
+                // Parse the cookie to get name and value
+                $parts = explode('=', $cookie, 2);
+                if (count($parts) === 2) {
+                        $cookieName = $parts[0];
+                        $cookieValue = $parts[1];
+                        
+                        // Set cookie with proper attributes for cross-domain access
+                        header("Set-Cookie: $cookieName=$cookieValue; Domain=.rms.final.digital; Path=/; Secure; HttpOnly; SameSite=None");
+                }
+        }
+
+        // Redirect to RMS with session
+        header("Location: $targetUrl");
+        exit;
+}
+
+/**
+ * LMS Direct Authentication - Authenticates user and redirects to LMS sub-platform with session
+ * This function handles direct access to LMS sub-platforms
+ */
+function handleLmsDirectAuth() {
+        global $method, $lms_subplatforms;
+
+        if ($method !== 'GET') {
+                http_response_code(405);
+                echo json_encode(['error' => 'Method not allowed']);
+                return;
+        }
+
+        $username = $_GET['username'] ?? '';
+        $subplatformName = $_GET['subplatform'] ?? '';
+        $targetPage = $_GET['page'] ?? 'my/';
+
+        if (!$username || !$subplatformName) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Username and sub-platform are required']);
+                return;
+        }
+
+        // Find the sub-platform configuration
+        $targetSubplatform = null;
+        foreach ($lms_subplatforms as $subplatform) {
+                if ($subplatform['name'] === $subplatformName) {
+                        $targetSubplatform = $subplatform;
+                        break;
+                }
+        }
+
+        if (!$targetSubplatform) {
+                http_response_code(404);
+                echo json_encode(['error' => 'Sub-platform not found']);
+                return;
+        }
+
+        // Get LMS credentials
+        $credentials = get_platform_credentials($username, 'LMS');
+        if (!$credentials) {
+                http_response_code(401);
+                echo json_encode(['error' => 'No LMS credentials found']);
+                return;
+        }
+
+        // Log the direct auth attempt
+        $logFile = __DIR__ . '/php_errors.log';
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Direct Auth attempt for user: $username, sub-platform: $subplatformName, target: $targetPage", FILE_APPEND);
+
+        // Get the cookie file path
+        $host = parse_url($targetSubplatform['url'], PHP_URL_HOST);
+        $cookieFile = __DIR__ . '/../cookies/' . $username . '_' . $host . '.txt';
         
-        $ch = curl_init($rmsUrl);
+        // Create cookies directory if it doesn't exist
+        if (!is_dir(__DIR__ . '/../cookies')) {
+                mkdir(__DIR__ . '/../cookies', 0755, true);
+        }
+
+        // Check if we have an existing session and validate it
+        $sessionValid = false;
+        if (file_exists($cookieFile)) {
+                // Test the session by making a request to the target page
+                $testUrl = $baseUrl . '/' . ltrim($targetPage, '/');
+                $ch = curl_init($testUrl);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
+                curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                ]);
+                
+                $testResponse = curl_exec($ch);
+                $testHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                
+                if ($testHttpCode === 200) {
+                        $sessionValid = validateLmsSession($testResponse, $subplatformName, $logFile);
+                }
+        }
+        
+        // If session is not valid, re-authenticate
+        if (!$sessionValid) {
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Session invalid or expired, re-authenticating user: $username", FILE_APPEND);
+                
+                // Force re-authentication by removing old cookie file
+                if (file_exists($cookieFile)) {
+                        unlink($cookieFile);
+                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Removed old cookie file for user: $username", FILE_APPEND);
+                }
+                
+                // Authenticate to LMS sub-platform
+                $authResult = authenticateToLmsSubplatformInternal($username, $subplatformName, $targetSubplatform, $credentials, $logFile, $cookieFile);
+                if (!$authResult['success']) {
+                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS authentication failed for user: $username - " . $authResult['message'], FILE_APPEND);
+                        http_response_code(401);
+                        echo json_encode(['error' => 'LMS authentication failed: ' . $authResult['message']]);
+                        return;
+                }
+                
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS re-authentication successful for user: $username", FILE_APPEND);
+        } else {
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Existing session valid for user: $username", FILE_APPEND);
+        }
+
+        // Read and parse the cookie file
+        if (!file_exists($cookieFile)) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Session cookie file not found']);
+                return;
+        }
+
+        $cookieContent = file_get_contents($cookieFile);
+        $cookies = [];
+        
+        // Parse Netscape format cookie file
+        $lines = explode("\n", $cookieContent);
+        foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line) || $line[0] === '#') continue;
+                
+                $parts = explode("\t", $line);
+                if (count($parts) >= 7) {
+                        $domain = $parts[0];
+                        $path = $parts[2];
+                        $secure = $parts[3];
+                        $expiry = $parts[4];
+                        $name = $parts[5];
+                        $value = $parts[6];
+                        
+                        // Only include cookies for the LMS domain
+                        if ($domain === $host || $domain === '.' . $host) {
+                                $cookies[] = "$name=$value";
+                        }
+                }
+        }
+
+        if (empty($cookies)) {
+                http_response_code(500);
+                echo json_encode(['error' => 'No valid session cookies found']);
+                return;
+        }
+
+        // Build the target URL
+        $baseUrl = rtrim($targetSubplatform['url'], '/');
+        $targetUrl = $baseUrl . '/' . ltrim($targetPage, '/');
+        
+        // Add query parameters from current request
+        $queryParams = $_GET;
+        unset($queryParams['endpoint'], $queryParams['username'], $queryParams['subplatform'], $queryParams['page']);
+        if (!empty($queryParams)) {
+                $targetUrl .= (strpos($targetUrl, '?') !== false ? '&' : '?') . http_build_query($queryParams);
+        }
+
+        // Log successful authentication
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Direct Auth successful for user: $username, redirecting to: $targetUrl", FILE_APPEND);
+
+        // Get fresh logintoken for the form submission
+        $loginUrl = rtrim($targetSubplatform['url'], '/') . '/login/index.php';
+        $ch = curl_init($loginUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_ENCODING, ''); // Automatically handle compression (gzip, deflate)
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language: en-US,en;q=0.5',
-            'Connection: keep-alive'
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         ]);
-
-        if ($method === 'POST') {
-
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($_POST));
-            
-    }
-
-        $content = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-        curl_close($ch);
-
-        if ($httpCode !== 200) {
-
-                http_response_code($httpCode);
-                echo $content;
-                return;
-            
-    }
-
-        // Enhanced URL rewriting for perfect display
-        $proxyBaseUrl = 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']) . '/api.php';
-        $content = rewriteUrlsForProxy($content, 'rms', $username, $baseUrl, $proxyBaseUrl);
         
-        // Inject proxy-aware JavaScript
-        $content = injectProxyJavaScript($content, 'rms', $username, $proxyBaseUrl);
+        $loginPageResponse = curl_exec($ch);
+        curl_close($ch);
+        
+        // Extract logintoken from the login page
+        $logintoken = null;
+        if (preg_match('/name="logintoken" value="([^"]+)"/', $loginPageResponse, $matches)) {
+            $logintoken = $matches[1];
+        }
 
-        // Set proper headers
-        header('Content-Type: text/html; charset=UTF-8');
-        echo $content;
+        // Output HTML page with hidden form that will submit to LMS
+        ?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authenticating to LMS...</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background-color: #f5f5f5;
+        }
+        .loading {
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h2>Authenticating to LMS...</h2>
+    <div class="loading">
+        <div class="spinner"></div>
+    </div>
+        <p>Please wait while we authenticate you to <?php echo htmlspecialchars($subplatformName); ?>...</p>
+    
+    <form id="lmsLoginForm" method="POST" action="<?php echo htmlspecialchars($loginUrl); ?>" target="_blank" style="display: none;">
+        <input type="hidden" name="anchor" value="">
+        <input type="hidden" name="username" value="<?php echo htmlspecialchars($credentials['platform_username']); ?>">
+        <input type="hidden" name="password" value="<?php echo htmlspecialchars($credentials['platform_password']); ?>">
+        <?php if ($logintoken): ?>
+        <input type="hidden" name="logintoken" value="<?php echo htmlspecialchars($logintoken); ?>">
+        <?php endif; ?>
+        <input type="hidden" name="rememberusername" value="0">
+    </form>
+    
+    <script>
+        // Auto-submit the form after a short delay
+        setTimeout(function() {
+            console.log('Auto-submitting LMS login form...');
+            document.getElementById('lmsLoginForm').submit();
+        }, 2000);
+    </script>
+</body>
+</html>
+        <?php
+        exit;
+}
+
+/**
+ * RMS Notifications Direct Authentication - Authenticates user and redirects to RMS notifications with session
+ * This function handles direct access to RMS notifications page
+ */
+function handleRmsNotificationsDirectAuth() {
+        global $method;
+
+        if ($method !== 'GET') {
+                http_response_code(405);
+                echo json_encode(['error' => 'Method not allowed']);
+                return;
+        }
+
+        $username = $_GET['username'] ?? '';
+        $targetPage = $_GET['page'] ?? 'Dashboard/notifications.php';
+
+        if (!$username) {
+                http_response_code(400);
+                echo json_encode(['error' => 'Username is required']);
+                return;
+        }
+
+        // Get RMS credentials and authenticate
+        $credentials = get_platform_credentials($username, 'RMS');
+        if (!$credentials) {
+                http_response_code(401);
+                echo json_encode(['error' => 'No RMS credentials found']);
+                return;
+        }
+
+        // Log the direct auth attempt
+        $logFile = __DIR__ . '/php_errors.log';
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS Notifications Direct Auth attempt for user: $username, target: $targetPage", FILE_APPEND);
+
+        // Get the cookie file path
+        $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_RMS.txt';
+        
+        // Check if we have an existing session and validate it
+        $sessionValid = false;
+        if (file_exists($cookieFile)) {
+                $sessionValid = validateRMSSession($credentials, $cookieFile, $targetPage);
+        }
+        
+        // If session is not valid, re-authenticate
+        if (!$sessionValid) {
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Session invalid or expired, re-authenticating user: $username", FILE_APPEND);
+                
+                // Force re-authentication by removing old cookie file
+                if (file_exists($cookieFile)) {
+                        unlink($cookieFile);
+                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Removed old cookie file for user: $username", FILE_APPEND);
+                }
+                
+                // Authenticate to RMS
+                $authResult = authenticateToRMS($credentials);
+                if (!$authResult['success']) {
+                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS authentication failed for user: $username - " . $authResult['message'], FILE_APPEND);
+                        http_response_code(401);
+                        echo json_encode(['error' => 'RMS authentication failed: ' . $authResult['message']]);
+                        return;
+                }
+                
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS re-authentication successful for user: $username", FILE_APPEND);
+        } else {
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Existing session valid for user: $username", FILE_APPEND);
+        }
+
+        // Read and parse the cookie file
+        $cookieContent = file_get_contents($cookieFile);
+        $cookies = [];
+        
+        // Parse Netscape format cookie file
+        $lines = explode("\n", $cookieContent);
+        foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line) || $line[0] === '#') continue;
+                
+                $parts = explode("\t", $line);
+                if (count($parts) >= 7) {
+                        $domain = $parts[0];
+                        $path = $parts[2];
+                        $secure = $parts[3];
+                        $expiry = $parts[4];
+                        $name = $parts[5];
+                        $value = $parts[6];
+                        
+                        // Only include cookies for rms.final.digital
+                        if ($domain === 'rms.final.digital' || $domain === '.rms.final.digital') {
+                                $cookies[] = "$name=$value";
+                        }
+                }
+        }
+
+        if (empty($cookies)) {
+                http_response_code(500);
+                echo json_encode(['error' => 'No valid session cookies found']);
+                return;
+        }
+
+        // Build the target URL
+        $baseUrl = 'https://rms.final.digital';
+        $targetUrl = $baseUrl . '/' . ltrim($targetPage, '/');
+        
+        // Add query parameters from current request
+        $queryParams = $_GET;
+        unset($queryParams['endpoint'], $queryParams['username'], $queryParams['page']);
+        if (!empty($queryParams)) {
+                $targetUrl .= (strpos($targetUrl, '?') !== false ? '&' : '?') . http_build_query($queryParams);
+        }
+
+        // Log successful authentication
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] RMS Notifications Direct Auth successful for user: $username, redirecting to: $targetUrl", FILE_APPEND);
+
+        // Set cookies in the browser and redirect
+        foreach ($cookies as $cookie) {
+                // Parse the cookie to get name and value
+                $parts = explode('=', $cookie, 2);
+                if (count($parts) === 2) {
+                        $cookieName = $parts[0];
+                        $cookieValue = $parts[1];
+                        
+                        // Set cookie with proper attributes for cross-domain access
+                        header("Set-Cookie: $cookieName=$cookieValue; Domain=.rms.final.digital; Path=/; Secure; HttpOnly; SameSite=None");
+                }
+        }
+
+        // Redirect to RMS notifications with session
+        header("Location: $targetUrl");
+        exit;
 }
 
 /**
@@ -2385,6 +2848,10 @@ function handleLeavePortalDashboardProxy() {
                     return;
                 case 'delete_notification':
                     handleDeleteNotification();
+                    return;
+                case 'clear_notification_actions':
+                    clearNotificationActions();
+                    echo json_encode(['success' => true, 'message' => 'Notification actions cleared']);
                     return;
                 case 'notifications':
                     // Handle general notifications page - might be HTML or JSON
@@ -2526,198 +2993,7 @@ function handleLeavePortalDashboardProxy() {
         echo $content;
 }
 
-/**
- * Handle RMS notifications proxy requests
- */
-function handleRmsNotificationsProxy() {
 
-        global $method;
-        
-        if ($method !== 'GET') {
-
-                http_response_code(405);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Method not allowed',
-                    'message' => 'This endpoint only supports GET requests.'
-                ]);
-                return;
-            
-    }
-        
-        $username = isset($_GET['username']) ? $_GET['username'] : '';
-        if (!$username) {
-
-                http_response_code(400);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Username is required',
-                    'message' => 'You must provide a username.'
-                ]);
-                return;
-            
-    }
-        
-        // Get RMS credentials
-        $credentials = get_platform_credentials($username, 'RMS');
-        if (!$credentials) {
-
-                http_response_code(401);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'No RMS credentials found for this user',
-                    'message' => 'No RMS credentials found for this user.'
-                ]);
-                return;
-            
-    }
-        
-        // Authenticate to RMS
-        $authResult = authenticateToRMS($credentials);
-        if (!$authResult['success']) {
-
-                http_response_code(401);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Failed to authenticate to RMS: ' . $authResult['message'],
-                    'message' => 'Failed to authenticate to RMS: ' . $authResult['message']
-                ]);
-                return;
-            
-    }
-        
-        // Fetch RMS notifications page
-        $notificationsUrl = 'https://rms.final.digital/Dashboard/notifications.php';
-        $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_RMS.txt';
-        
-        $ch = curl_init($notificationsUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        ]);
-        
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($httpCode === 200) {
-
-                // Set headers for HTML response
-                header('Content-Type: text/html; charset=UTF-8');
-                header('Cache-Control: no-cache, no-store, must-revalidate');
-                header('Pragma: no-cache');
-                header('Expires: 0');
-                
-                // Rewrite URLs to maintain session through proxy
-                $proxyBase = 'http://localhost/LEAVE_RMS/database/api.php?endpoint=rms_dashboard_proxy&username=' . urlencode($username);
-                $baseUrl = 'https://rms.final.digital';
-                
-                // Complete URL rewriting for RMS notifications
-                // Step 1: Handle static resources (CSS, JS, images, fonts) - point directly to RMS
-                $staticExtensions = ['css', 'js', 'png', 'jpg', 'jpeg', 'gif', 'ico', 'svg', 'woff', 'woff2', 'ttf', 'eot', 'webp', 'mp4', 'webm'];
-                $staticPattern = implode('|', $staticExtensions);
-                
-                // Fix relative paths for static resources
-                $response = preg_replace('/(src|href)=["\']\/([^"\']*\.(' . $staticPattern . '))["\']/', '$1="' . $baseUrl . '/$2"', $response);
-                $response = preg_replace('/(src|href)=["\']\.\.\/([^"\']*\.(' . $staticPattern . '))["\']/', '$1="' . $baseUrl . '/$2"', $response);
-                $response = preg_replace('/(src|href)=["\']([^"\']*\.(' . $staticPattern . '))["\']/', '$1="' . $baseUrl . '/$2"', $response);
-                
-                // Fix absolute URLs for static resources
-                $response = preg_replace('/(src|href)=["\']https:\/\/rms\.final\.digital\/([^"\']*\.(' . $staticPattern . '))["\']/', '$1="' . $baseUrl . '/$2"', $response);
-                
-                // Step 2: Handle navigation links - these should go through proxy
-                // Fix absolute RMS URLs to go through proxy
-                $response = preg_replace('/href=["\']https:\/\/rms\.final\.digital\/([^"\']*)["\']/', 'href="' . $proxyBase . '&page=$1"', $response);
-                
-                // Fix relative navigation links to go through proxy (but not external URLs)
-                $response = preg_replace('/href=["\']\/([^"\']*)["\']/', 'href="' . $proxyBase . '&page=$1"', $response);
-                $response = preg_replace('/href=["\']\.\.\/([^"\']*)["\']/', 'href="' . $proxyBase . '&page=../$1"', $response);
-                
-                // Handle form actions - these should go through proxy
-                $response = preg_replace('/action=["\']https:\/\/rms\.final\.digital\/([^"\']*)["\']/', 'action="' . $proxyBase . '&page=$1"', $response);
-                $response = preg_replace('/action=["\']\/([^"\']*)["\']/', 'action="' . $proxyBase . '&page=$1"', $response);
-                
-                // Step 3: Handle AJAX calls and API endpoints
-                $response = preg_replace('/url:\s*["\']https:\/\/rms\.final\.digital\/([^"\']*)["\']/', 'url: "' . $proxyBase . '&page=$1"', $response);
-                $response = preg_replace('/url:\s*["\']\/([^"\']*)["\']/', 'url: "' . $proxyBase . '&page=$1"', $response);
-                
-                // Step 4: Handle data attributes
-                $response = preg_replace('/data-url=["\']https:\/\/rms\.final\.digital\/([^"\']*)["\']/', 'data-url="' . $proxyBase . '&page=$1"', $response);
-                $response = preg_replace('/data-url=["\']\/([^"\']*)["\']/', 'data-url="' . $proxyBase . '&page=$1"', $response);
-                
-                // Step 5: Handle inline styles
-                $response = preg_replace('/url\(["\']?https:\/\/rms\.final\.digital\/([^"\']*)["\']?\)/', 'url("' . $baseUrl . '/$1")', $response);
-                $response = preg_replace('/url\(["\']?\/([^"\']*)["\']?\)/', 'url("' . $baseUrl . '/$1")', $response);
-                
-                // Step 6: Final cleanup - restore external URLs that were incorrectly rewritten
-                $response = preg_replace('/href=["\']' . preg_quote($proxyBase, '/') . '&page=https:\/\/([^"\']*)["\']/', 'href="https://$1"', $response);
-                $response = preg_replace('/src=["\']' . preg_quote($proxyBase, '/') . '&page=https:\/\/([^"\']*)["\']/', 'src="https://$1"', $response);
-                $response = preg_replace('/action=["\']' . preg_quote($proxyBase, '/') . '&page=https:\/\/([^"\']*)["\']/', 'action="https://$1"', $response);
-                
-                // Step 7: Fix any remaining malformed URLs
-                $response = preg_replace('/https:\/\/rms\.final\.digital\/https:\/\/rms\.final\.digital\//', 'https://rms.final.digital/', $response);
-                $response = preg_replace('/https:\/\/rms\.final\.digital\/https:\/\/rms\.final\.digital\//', 'https://rms.final.digital/', $response);
-                
-                // Step 8: Fix JavaScript event handlers that interfere with Bootstrap dropdowns
-                // Remove custom event listeners that prevent default behavior for dropdown buttons
-                $response = preg_replace('/document\.getElementById\("notificationDropdown"\)\.addEventListener\("click",\s*function\(e\)\s*\{\s*e\.preventDefault\(\);\s*console\.log\("Notification button clicked"\);\s*\}\);/', '', $response);
-                $response = preg_replace('/document\.getElementById\("userDropdown"\)\.addEventListener\("click",\s*function\(e\)\s*\{\s*e\.preventDefault\(\);\s*console\.log\("User button clicked"\);\s*\}\);/', '', $response);
-                
-                // Ensure Bootstrap dropdowns are properly initialized
-                $response = str_replace(
-                    '// Initialize Bootstrap dropdowns',
-                    '// Initialize Bootstrap dropdowns - Fixed for proxy compatibility',
-                    $response
-                );
-                
-                // Add Bootstrap 4 dropdown initialization if not present
-                if (!preg_match('/\$\(\[data-toggle="dropdown"\]\)\.dropdown\(\)/', $response)) {
-
-                        $bootstrapInit = '
-        <script>
-        $(document).ready(function() {
-            // Initialize Bootstrap 4 dropdowns
-            $("[data-toggle=\'dropdown\']").dropdown();
-        });
-        </script>';
-                        
-                        // Insert after Bootstrap JS but before </body> tag
-                        if (strpos($response, '</body>') !== false) {
-
-                                $response = str_replace('</body>', $bootstrapInit . '</body>', $response);
-                            
-            }
-            else {
-
-                                // If no </body> tag, insert before </html>
-                                $response = str_replace('</html>', $bootstrapInit . '</html>', $response);
-                            
-            }
-                    
-        }
-                
-                // Output the RMS notifications HTML
-                echo $response;
-            
-    }
-    else {
-
-                http_response_code($httpCode);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Failed to fetch RMS notifications',
-                    'message' => 'An error occurred while fetching the RMS notifications.',
-                    'status' => $httpCode
-                ]);
-            
-    }
-}
 
 // =============================================================================
 // PLATFORM HANDLING FUNCTIONS
@@ -2842,6 +3118,96 @@ function handleNotifications() {
 }
 
 /**
+ * Handle announcements endpoint
+ * Fetches active announcements from the database
+ */
+function handleAnnouncements() {
+    global $method;
+    
+    if ($method !== 'GET') {
+        http_response_code(405);
+        echo json_encode([
+            'error' => 'Method not allowed',
+            'message' => 'This endpoint only supports GET requests.'
+        ]);
+        return;
+    }
+    
+    try {
+        // Get active announcements from database
+        $announcements = get_active_announcements();
+        
+        echo json_encode([
+            'success' => true,
+            'announcements' => $announcements
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'error' => 'Internal server error',
+            'message' => 'Failed to fetch announcements: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Handle dining menu today request
+ */
+function handleDiningMenuToday() {
+    global $method;
+    
+    if ($method !== 'GET') {
+        http_response_code(405);
+        echo json_encode([
+            'error' => 'Method not allowed',
+            'message' => 'This endpoint only supports GET requests.'
+        ]);
+        return;
+    }
+    
+    try {
+        // Get date parameter, default to today if not provided. Only allow today and tomorrow.
+        $today = date('Y-m-d');
+        $tomorrow = date('Y-m-d', strtotime('+1 day'));
+        $date = isset($_GET['date']) ? $_GET['date'] : $today;
+        
+        // Validate date format
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            http_response_code(400);
+            echo json_encode([
+                'error' => 'Invalid date format',
+                'message' => 'Date must be in YYYY-MM-DD format.'
+            ]);
+            return;
+        }
+        
+        // Only allow today or tomorrow for users
+        if ($date !== $today && $date !== $tomorrow) {
+            http_response_code(403);
+            echo json_encode([
+                'error' => 'Forbidden',
+                'message' => 'Access to dining menu is limited to today and tomorrow.'
+            ]);
+            return;
+        }
+
+        // Get dining menu for the specified date
+        $dining_menu = get_dining_menu_by_date($date);
+        
+        echo json_encode([
+            'success' => true,
+            'dining_menu' => $dining_menu
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            'error' => 'Internal server error',
+            'message' => 'Failed to fetch dining menu: ' . $e->getMessage()
+        ]);
+    }
+}
+
+/**
  * Fetch notifications from a specific platform
  * 
  * @param string $username Username
@@ -2879,9 +3245,7 @@ function fetchNotificationsFromPlatform($username, $platform) {
                 case 'Leave and Absence':
                     file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Using Leave Portal special authentication", FILE_APPEND);
                     return fetchNotificationsFromLeavePortal($credentials, $url);
-                case 'SIS':
-                    file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Using SIS special authentication", FILE_APPEND);
-                    return fetchNotificationsFromSIS($credentials, $url);
+
                 case 'LMS':
                     file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Using LMS special authentication", FILE_APPEND);
                     return fetchNotificationsFromLMS($credentials, $url);
@@ -2960,15 +3324,30 @@ function fetchNotificationsFromRMS($credentials, $url) {
                         foreach ($notifications as $notification) {
 
                                 $notificationId = $notification['id'] ?? '';
+                                $notificationTitle = $notification['title'] ?? '';
+                                $notificationMessage = $notification['message'] ?? '';
                                 $shouldInclude = true;
                                 
                                 // Check if this notification has been marked as read or deleted
                                 foreach ($actions as $actionKey => $actionData) {
 
                                         if ($actionData['username'] === $username && 
-                                            $actionData['notification_id'] == $notificationId && 
                                             $actionData['platform'] === 'RMS') {
-
+                                            
+                                            // Check by ID if available, otherwise check by content
+                                            $matchesNotification = false;
+                                            if (!empty($notificationId) && $actionData['notification_id'] == $notificationId) {
+                                                $matchesNotification = true;
+                                            } elseif (!empty($notificationTitle) && !empty($notificationMessage)) {
+                                                // If no ID, check by title and message content
+                                                $actionTitle = $actionData['title'] ?? '';
+                                                $actionMessage = $actionData['message'] ?? '';
+                                                if ($notificationTitle === $actionTitle && $notificationMessage === $actionMessage) {
+                                                    $matchesNotification = true;
+                                                }
+                                            }
+                                            
+                                            if ($matchesNotification) {
                                                 
                                                 if ($actionData['action'] === 'delete') {
 
@@ -2985,16 +3364,18 @@ function fetchNotificationsFromRMS($credentials, $url) {
                                                         break;
                                                     
                         }
+                                            }
                                             
                     }
                                     
                 }
                                 
                                 if ($shouldInclude) {
-
+                                    // Only include notifications that have actual content
+                                    if (!empty($notification['title']) || !empty($notification['message'])) {
                                         $filteredNotifications[] = $notification;
-                                    
-                }
+                                    }
+                                }
                             
             }
                         
@@ -3152,30 +3533,7 @@ function fetchNotificationsFromLeavePortal($credentials, $url) {
         
         return [];
 }
-/**
- * Fetch notifications from SIS platform
- * 
- * @param array $credentials User credentials
- * @param string $url Notifications URL
- * @return array Notifications array
- */
-function fetchNotificationsFromSIS($credentials, $url) {
 
-        $logFile = __DIR__ . '/php_errors.log';
-        
-            // Try to authenticate first
-        $authResult = authenticateToSIS($credentials);
-            if (!$authResult['success']) {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS authentication failed, cannot fetch notifications", FILE_APPEND);
-                    return [];
-                
-    }
-        
-        // SIS has no notifications - return empty array
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS notifications: returning empty array (no notifications available)", FILE_APPEND);
-        return [];
-}
 
 /**
  * Fetch notifications from LMS platform
@@ -3595,6 +3953,32 @@ function parseNotificationsFromResponse($response, $platformName, $url) {
                                 continue;
                             
             }
+                        
+                        // Skip specific UI elements and navigation items that are not real notifications
+                        $uiElements = [
+                            'no notifications available',
+                            'no notifications found', 
+                            'your notifications',
+                            'absence records',
+                            'all notifications',
+                            'notifications',
+                            'you\'ll see your notifications here',
+                            'recent notifications',
+                            'view all notifications',
+                            'menu',
+                            'navigation',
+                            'header',
+                            'footer',
+                            'sidebar'
+                        ];
+                        
+                        $msgLower = strtolower(trim($msg));
+                        foreach ($uiElements as $element) {
+                            if ($msgLower === $element || strpos($msgLower, $element) === 0) {
+                                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Skipped #$index: UI element '$element'", FILE_APPEND);
+                                continue 2; // Skip to next notification
+                            }
+                        }
                         // Skip if message is only numbers, whitespace, or punctuation (but allow meaningful text with punctuation)
                         if (preg_match('/^[\d\s\W]*$/', $msg) && !preg_match('/[a-zA-Z]/', $msg)) {
 
@@ -4627,9 +5011,11 @@ function handleDeleteNotification() {
  * @param string $notificationId Notification ID
  * @param string $platform Platform name
  * @param string $action Action performed (mark_read, toggle_read, delete)
+ * @param string $title Notification title (optional)
+ * @param string $message Notification message (optional)
  * @return bool Success status
  */
-function recordNotificationAction($username, $notificationId, $platform, $action) {
+function recordNotificationAction($username, $notificationId, $platform, $action, $title = '', $message = '') {
 
         $actionFile = __DIR__ . '/notification_actions.json';
         $actions = [];
@@ -4650,6 +5036,8 @@ function recordNotificationAction($username, $notificationId, $platform, $action
             'notification_id' => $notificationId,
             'platform' => $platform,
             'action' => $action,
+            'title' => $title,
+            'message' => $message,
             'timestamp' => date('Y-m-d H:i:s')
         ];
         
@@ -6767,74 +7155,7 @@ function handleLmsSubplatformAuth() {
             
     }
 }
-/**
- * Fetch notifications from LMS sub-platform
- */
-function fetchLmsSubplatformNotifications($notificationsUrl, $subplatformName, $cookieFile = null) {
 
-        $logFile = __DIR__ . '/php_errors.log';
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Fetching notifications from LMS sub-platform: $subplatformName", FILE_APPEND);
-        
-        $ch = curl_init($notificationsUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Accept: application/json, text/html, */*',
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Referer: ' . $notificationsUrl
-        ]);
-        if ($cookieFile && file_exists($cookieFile)) {
-
-                curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-            
-    }
-    else {
-
-                curl_setopt($ch, CURLOPT_COOKIEFILE, 'cookies.txt');
-        // fallback
-            
-    }
-        
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-        
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Sub-platform Notifications Response (HTTP $httpCode):\n" . substr($response, 0, 1000) . "\n", FILE_APPEND);
-        if ($error) {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Sub-platform Notifications cURL Error: $error\n", FILE_APPEND);
-            
-    }
-        
-        if ($httpCode === 200 && $response) {
-
-                // Try to parse JSON response
-                $jsonResponse = json_decode($response, true);
-                if ($jsonResponse !== null) {
-
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Sub-platform notifications parsed as JSON: " . count($jsonResponse) . " items", FILE_APPEND);
-                        return $jsonResponse;
-                    
-        }
-                
-                // Try to parse HTML response
-                $notifications = parseLmsSubplatformNotificationsFromHtml($response, $subplatformName);
-                if (!empty($notifications)) {
-
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Sub-platform notifications parsed from HTML: " . count($notifications) . " items", FILE_APPEND);
-                        return $notifications;
-                    
-        }
-            
-    }
-        
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Sub-platform notifications: no valid notifications found", FILE_APPEND);
-        return [];
-}
 /**
  * Parse notifications from HTML response for LMS sub-platforms
  */
@@ -9170,4 +9491,19 @@ function getLeavePortalJavaScript() {
             'event_handlers' => $eventHandlers,
             'page_url' => $notificationUrl
         ], JSON_PRETTY_PRINT);
+}
+
+/**
+ * Clear notification actions file to reset filtering
+ * This can be used when notification filtering gets corrupted
+ */
+function clearNotificationActions() {
+    $actionFile = __DIR__ . '/notification_actions.json';
+    if (file_exists($actionFile)) {
+        unlink($actionFile);
+        $logFile = __DIR__ . '/php_errors.log';
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Cleared notification actions file", FILE_APPEND);
+        return true;
+    }
+    return false;
 }
