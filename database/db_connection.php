@@ -817,10 +817,14 @@ function createUsersTable() {
         username VARCHAR(30) NOT NULL UNIQUE,
         password VARCHAR(255) NOT NULL,
         email VARCHAR(50),
+        role ENUM('instructor','student') DEFAULT 'instructor',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )";
     
     $conn->query($sql);
+
+    // Ensure role column exists on existing installations
+    addColumnIfNotExists('users', 'role', "ENUM('instructor','student') DEFAULT 'instructor' AFTER email");
 }
 
 /**
@@ -1114,6 +1118,29 @@ function updateExistingPlatforms() {
     
     // Add LMS if it doesn't exist
     addPlatformIfNotExists('LMS', 'Description for LMS', 'https://lms0.final.edu.tr', null);
+    
+    // Add Document Application System for students if it doesn't exist
+    addPlatformIfNotExists('Document Application System', 'Document Application System for Students', 'https://docs.final.edu.tr/pages/form', null);
+    
+    // Add Summer School Application for students if it doesn't exist
+    addPlatformIfNotExists('Summer School Application', 'Summer School Application / Yaz Okulu Başvurusu', 'https://online.final.edu.tr/yazokulu/login.php', null);
+    
+    // Add Accommodation Booking Portal for students if it doesn't exist
+    addPlatformIfNotExists('Accommodation Booking Portal', 'Accommodation Booking Portal for Students', 'https://dorms.final.edu.tr/', null);
+    
+            // Add Support Center for students if it doesn't exist
+        addPlatformIfNotExists('Support Center', 'Support Center / Destek Merkezine', 'https://destek.final.edu.tr/index.php', null);
+
+        // Add Student Exam Registration for students if it doesn't exist
+        addPlatformIfNotExists('Student Exam Registration', 'Student Exam Registration for Students', 'https://online.final.edu.tr/exam/', null);
+
+        // Add Exemption exam form for students if it doesn't exist
+        addPlatformIfNotExists('Exemption exam form', 'Exemption exam form for Students', 'https://online.final.edu.tr/muafiyet', null);
+
+        // Add Resit Exams Application for students if it doesn't exist
+        addPlatformIfNotExists('Resit Exams Application', 'Resit Exams Application / Bütünleme Sınavları Başvurusu', 'https://online.final.edu.tr/resit/login.php', null);
+
+
 }
 
 /**

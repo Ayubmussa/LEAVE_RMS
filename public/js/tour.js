@@ -55,50 +55,106 @@ class PlatformTour {
      * Creates the tour steps with translations
      */
     createTourSteps() {
-        this.tourSteps = [
-            {
-                target: '#notification-btn',
-                titleKey: 'tour-notifications-title',
-                contentKey: 'tour-notifications-content',
-                position: 'bottom'
-            },
-            {
-                target: '#platforms-section',
-                titleKey: 'tour-platforms-title',
-                contentKey: 'tour-platforms-content',
-                position: 'right'
-            },
-            {
-                target: '#dining-menu-section',
-                titleKey: 'tour-dining-menu-title',
-                contentKey: 'tour-dining-menu-content',
-                position: 'left'
-            },
-            {
-                target: '#announcements-section',
-                titleKey: 'tour-announcements-title',
-                contentKey: 'tour-announcements-content',
-                position: 'left'
-            },
-            {
-                target: '#user-dropdown-btn',
-                titleKey: 'tour-settings-title',
-                contentKey: 'tour-settings-content',
-                position: 'bottom'
-            },
-            {
-                target: 'header h1',
-                titleKey: 'tour-navigation-title',
-                contentKey: 'tour-navigation-content',
-                position: 'bottom'
-            },
-            {
-                target: '#username',
-                titleKey: 'tour-welcome-title',
-                contentKey: 'tour-welcome-content',
-                position: 'bottom'
-            }
-        ];
+        const user = JSON.parse(localStorage.getItem('user') || 'null');
+        const role = (user && user.role) ? String(user.role).toLowerCase().trim() : 'instructor';
+
+        if (role === 'student') {
+            // Student-specific tour: no notifications, focused on platforms, dining, announcements, settings
+            this.tourSteps = [
+                {
+                    target: '#platforms-section',
+                    titleKey: 'tour-platforms-title',
+                    contentKey: 'tour-platforms-content',
+                    position: 'right'
+                },
+                {
+                    target: '#dining-menu-section',
+                    titleKey: 'tour-dining-menu-title',
+                    contentKey: 'tour-dining-menu-content',
+                    position: 'left'
+                },
+                {
+                    target: '#announcements-section',
+                    titleKey: 'tour-announcements-title',
+                    contentKey: 'tour-announcements-content',
+                    position: 'left'
+                },
+                {
+                    target: '#user-dropdown-btn',
+                    titleKey: 'tour-settings-title',
+                    contentKey: 'tour-settings-content',
+                    position: 'bottom'
+                },
+                {
+                    target: 'header h1',
+                    titleKey: 'tour-navigation-title',
+                    contentKey: 'tour-navigation-content',
+                    position: 'bottom'
+                },
+                {
+                    target: '#username',
+                    titleKey: 'tour-welcome-title',
+                    contentKey: 'tour-welcome-content',
+                    position: 'bottom'
+                }
+            ];
+            // Extra safety: remove any step that references notifications if present
+            this.tourSteps = this.tourSteps.filter(step =>
+                typeof step.target === 'string' && !step.target.includes('notification')
+            );
+        } else {
+            // Default tour (instructors/admins)
+            this.tourSteps = [
+                {
+                    target: '#notification-btn',
+                    titleKey: 'tour-notifications-title',
+                    contentKey: 'tour-notifications-content',
+                    position: 'bottom'
+                },
+                {
+                    target: '#platforms-section',
+                    titleKey: 'tour-platforms-title',
+                    contentKey: 'tour-platforms-content',
+                    position: 'right'
+                },
+                {
+                    target: '#dining-menu-section',
+                    titleKey: 'tour-dining-menu-title',
+                    contentKey: 'tour-dining-menu-content',
+                    position: 'left'
+                },
+                {
+                    target: '#announcements-section',
+                    titleKey: 'tour-announcements-title',
+                    contentKey: 'tour-announcements-content',
+                    position: 'left'
+                },
+                {
+                    target: '#user-dropdown-btn',
+                    titleKey: 'tour-settings-title',
+                    contentKey: 'tour-settings-content',
+                    position: 'bottom'
+                },
+                {
+                    target: 'header h1',
+                    titleKey: 'tour-navigation-title',
+                    contentKey: 'tour-navigation-content',
+                    position: 'bottom'
+                },
+                {
+                    target: '#username',
+                    titleKey: 'tour-welcome-title',
+                    contentKey: 'tour-welcome-content',
+                    position: 'bottom'
+                }
+            ];
+        }
+
+        // Final guard: remove any steps whose targets are not visible right now
+        this.tourSteps = this.tourSteps.filter(step => {
+            const el = document.querySelector(step.target);
+            return el && this.isElementVisible(el);
+        });
     }
 
     /**
@@ -149,7 +205,8 @@ class PlatformTour {
      */
     startTour() {
         if (this.isActive) return;
-        
+        // Recompute steps at start to ensure role-aware steps are applied
+        this.createTourSteps();
         this.isActive = true;
         this.currentStep = 0;
         this.showOverlay();
@@ -186,9 +243,24 @@ class PlatformTour {
         }
 
         const step = this.tourSteps[stepIndex];
+        // Defensive skip for notification steps when role is student
+        const userForStep = JSON.parse(localStorage.getItem('user') || 'null');
+        const roleForStep = (userForStep && userForStep.role) ? String(userForStep.role).toLowerCase().trim() : 'instructor';
+        if (roleForStep === 'student') {
+            const titleMaybe = this.getTranslation(step.titleKey) || '';
+            const contentMaybe = this.getTranslation(step.contentKey) || '';
+            const mentionsNotification = /notification/i.test(titleMaybe) || /notification/i.test(contentMaybe);
+            if (
+                mentionsNotification ||
+                (typeof step.target === 'string' && step.target.toLowerCase().includes('notification'))
+            ) {
+                this.showStep(stepIndex + 1);
+                return;
+            }
+        }
         const targetElement = document.querySelector(step.target);
         
-        if (!targetElement) {
+        if (!targetElement || !this.isElementVisible(targetElement)) {
             this.showStep(stepIndex + 1);
             return;
         }
@@ -240,6 +312,7 @@ class PlatformTour {
      */
     showTooltip(targetElement, step) {
         const rect = targetElement.getBoundingClientRect();
+        const isDark = document.body.classList.contains('dark-mode');
         
         console.log('Showing tooltip for step:', step);
         console.log('Title key:', step.titleKey);
@@ -247,17 +320,19 @@ class PlatformTour {
         
         const title = this.getTranslation(step.titleKey);
         const content = this.getTranslation(step.contentKey);
+        const titleColor = isDark ? '#f0f0f0' : '#000000';
+        const textColor = isDark ? '#ccc' : '#666';
         
         console.log('Translated title:', title);
         console.log('Translated content:', content);
         
         const tooltipContent = `
             <div style="margin-bottom: 15px;">
-                <h3 style="margin: 0 0 10px 0; color: #000000; font-size: 16px; font-weight: bold;">${title}</h3>
-                <p style="margin: 0; color: #666; line-height: 1.5; font-size: 14px;">${content}</p>
+                <h3 style="margin: 0 0 10px 0; color: ${titleColor}; font-size: 16px; font-weight: bold;">${title}</h3>
+                <p style="margin: 0; color: ${textColor}; line-height: 1.5; font-size: 14px;">${content}</p>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 12px; color: #666;">${this.currentStep + 1} of ${this.tourSteps.length}</span>
+                <span style="font-size: 12px; color: ${textColor};">${this.currentStep + 1} of ${this.tourSteps.length}</span>
                 <div style="display: flex; gap: 8px;">
                     <button id="tour-skip" class="tour-btn tour-btn-secondary" style="font-size: 12px; padding: 6px 12px;">${this.getTranslation('tour-skip')}</button>
                     <button id="tour-prev" class="tour-btn tour-btn-secondary" style="display: ${this.currentStep === 0 ? 'none' : 'inline-block'};">${this.getTranslation('tour-previous')}</button>
@@ -270,12 +345,40 @@ class PlatformTour {
         this.tooltip.style.opacity = '1';
         this.tooltip.style.transform = 'scale(1)';
         this.tooltip.style.pointerEvents = 'auto';
+        // Apply theme to tooltip container
+        this.tooltip.style.background = isDark ? '#060e1e' : 'white';
+        this.tooltip.style.boxShadow = isDark ? '0 4px 20px rgba(0, 0, 0, 0.4)' : '0 4px 20px rgba(0, 0, 0, 0.15)';
 
         // Position tooltip
         this.positionTooltip(targetElement, step.position);
 
         // Add event listeners
         this.addTooltipEventListeners();
+    }
+
+    /**
+     * Determines if an element is visible (not hidden and displayed)
+     * @param {HTMLElement} el - Element to check
+     * @returns {boolean} true if visible
+     */
+    isElementVisible(el) {
+        if (!el) return false;
+        // Skip if element or any parent has class 'hidden'
+        let node = el;
+        while (node) {
+            if (node.classList && node.classList.contains('hidden')) {
+                return false;
+            }
+            node = node.parentElement;
+        }
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+            return false;
+        }
+        const rects = el.getClientRects();
+        if (!rects || rects.length === 0) return false;
+        if ((el.offsetWidth <= 0 && el.offsetHeight <= 0)) return false;
+        return true;
     }
 
     /**

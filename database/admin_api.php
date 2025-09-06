@@ -1,7 +1,9 @@
 <?php
-// Enable error reporting for debugging
+// Error handling: log errors to file, don't display to client (prevents JSON corruption)
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', __DIR__ . '/php_errors.log');
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -433,6 +435,9 @@ function handleUserPromoteToAdmin($input) {
     $res = $stmt->get_result();
     $existing = $res->fetch_assoc();
     $stmt->close();
+
+    // Enforce role to regular admin
+    $role = 'admin';
 
     if ($existing) {
         // Update role and activate

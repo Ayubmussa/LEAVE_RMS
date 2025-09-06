@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>FINAL GLOBAL</title>
-    <link rel="stylesheet" href="css/styles.css?v=53">
+    <link rel="stylesheet" href="css/styles.css?v=60">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
     /*
@@ -21,7 +21,7 @@
         overflow-x: hidden !important;
         overflow-y: auto !important;
       }
-      .container, main, .section, .sections-container, .platforms-container, .right-side-container, .dining-menu-container, .announcements-container, .card, .dining-menu-card, .announcement-card, .notification-card, .btn, .btn-primary, .btn-logout, .user-dropdown-content, .notification-dropdown-content, header, footer {
+      .container, main, .section, .sections-container, .platforms-container, .right-side-container, .dining-menu-container, .announcements-container, .card, .dining-menu-card, .announcement-card, .notification-card, .btn, .btn-primary, .btn-logout, header, footer {
         width: 100vw !important;
         min-width: 0 !important;
         max-width: 100vw !important;
@@ -32,6 +32,23 @@
         position: static !important;
         height: auto !important;
         overflow: visible !important;
+      }
+      /* Keep dropdowns anchored to their buttons on mobile */
+      .user-dropdown { position: relative !important; }
+      .user-dropdown-content {
+        position: absolute !important;
+        right: 0 !important;
+        width: auto !important;
+        min-width: 180px !important;
+        max-width: 90vw !important;
+      }
+      .notification-dropdown { position: relative !important; }
+      .notification-dropdown-content {
+        position: absolute !important;
+        right: 0 !important;
+        width: auto !important;
+        min-width: 280px !important;
+        max-width: 90vw !important;
       }
       .btn, .btn-primary, .btn-logout {
         width: 100% !important;
@@ -163,11 +180,11 @@
         </div>
     </div>
 
-    <script src="js/main.js?v=15"></script>
+    <script src="js/main.js?v=22"></script>
     <script src="js/user_admin_link.js?v=1"></script>
-    <link rel="stylesheet" href="css/styles.css?v=53">
+    <link rel="stylesheet" href="css/styles.css?v=60">
     <script src="js/language.js?v=11"></script>
-    <script src="js/tour.js?v=8"></script>
+    <script src="js/tour.js?v=12"></script>
     <script src="js/login.js?v=7"></script>
 </body>
 </html>

@@ -97,10 +97,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (userResponse.ok) {
                 const userData = await userResponse.json();
                 if (userData.success) {
-                    // Store user session
+                    // Store user session with role support (default to 'instructor' if not provided)
+                    const resolvedRole = (userData.user && userData.user.role) ? userData.user.role : 'instructor';
                     localStorage.setItem('user', JSON.stringify({
                         username: usernameOrEmail,
                         ...(userData.user || {}),
+                        role: resolvedRole,
                         platforms: userData.platforms || []
                     }));
 

@@ -1314,7 +1314,7 @@ class AdminPanel {
     populateYearOptions() {
         const yearSelect = document.getElementById('holiday-year');
         const uploadYearSelect = document.getElementById('upload-year');
-        
+
         // Auto-update to current year - static within session but updates yearly
         const currentYear = new Date().getFullYear();
         
@@ -1324,11 +1324,11 @@ class AdminPanel {
 
         // Populate main year selector
         if (yearSelect) {
-            yearSelect.innerHTML = '';
+        yearSelect.innerHTML = '';
             const option = document.createElement('option');
             option.value = currentYear;
             option.textContent = currentYear;
-            option.selected = true;
+                option.selected = true;
             yearSelect.appendChild(option);
             console.log('Main year selector populated');
         }

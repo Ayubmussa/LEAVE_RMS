@@ -132,6 +132,7 @@ document.addEventListener('DOMContentLoaded', function() {
         diningMenuDots: document.getElementById('dining-menu-dots'),
         diningPrevBtn: document.getElementById('dining-prev-btn'),
         diningNextBtn: document.getElementById('dining-next-btn'),
+        notificationsSection: document.getElementById('notification-section'),
         notificationBtn: document.getElementById('notification-btn'),
         notificationDropdown: document.getElementById('notification-dropdown-content'),
         notificationBadge: document.getElementById('notification-badge')
@@ -251,11 +252,36 @@ document.addEventListener('DOMContentLoaded', function() {
         window.addEventListener('languageChanged', function() {
             console.log('Language change event detected in main.js');
             updateGreeting();
+            
+            // Load notifications only for non-student roles and toggle UI
+            const user = getUserFromStorage();
+            const userRole = (user && user.role) ? String(user.role).toLowerCase().trim() : 'instructor';
+            const isStudent = userRole === 'student';
+            if (!isStudent) {
             loadNotifications();
+                updateNotificationHeader();
+            }
+            const notifEls = [
+                elements.notificationsSection,
+                elements.notificationBtn,
+                elements.notificationDropdown,
+                elements.notificationBadge
+            ];
+            notifEls.forEach(el => {
+                if (!el) return;
+                if (isStudent) {
+                    el.classList.add('hidden');
+                    if (el.id === 'notification-dropdown-content') {
+                        el.classList.remove('show');
+                    }
+                } else {
+                    el.classList.remove('hidden');
+                }
+            });
+            
             loadPlatforms();
             loadAnnouncements();
             loadDiningMenu();
-            updateNotificationHeader();
             console.log('Language change handling complete in main.js');
         });
     }
@@ -326,7 +352,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoggedOutState();
         }
         
-        // Always load platforms
+        // Load platforms for all roles (students will see filtered platforms)
         loadPlatforms();
     }
 
@@ -335,8 +361,19 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {Object} user - User object
      */
     function showLoggedInState(user) {
+        // Role-based gating for students (platforms to be applied later)
+        const userRole = (user && user.role) ? user.role : 'instructor';
+        const isStudent = userRole === 'student';
+        
         elements.loginSection.classList.add('hidden');
         elements.sectionsContainer.classList.remove('hidden');
+        
+        // Add student-view class for styling adjustments
+        if (isStudent) {
+            elements.sectionsContainer.classList.add('student-view');
+        } else {
+            elements.sectionsContainer.classList.remove('student-view');
+        }
         
         if (elements.usernameElement) {
             elements.usernameElement.textContent = `Welcome, ${user.username || 'User'}`;
@@ -345,11 +382,40 @@ document.addEventListener('DOMContentLoaded', function() {
         if (elements.logoutBtn) {
             elements.logoutBtn.classList.remove('hidden');
         }
-        
-        // Load notifications, announcements, and dining menu only if user is logged in
+
+        // Load notifications only for non-student roles, announcements and dining menu for all
+        if (!isStudent) {
         loadNotifications();
+        }
         loadAnnouncements();
-        loadDiningMenu();
+        // Only load dining menu for non-students
+        if (!isStudent) {
+            loadDiningMenu();
+        }
+
+        // Show platforms section for all roles (students will see filtered platforms)
+        if (elements.platformsSection) {
+            elements.platformsSection.classList.remove('hidden');
+        }
+
+        // Hide all notification UI for student role
+        const notifEls = [
+            elements.notificationsSection,
+            elements.notificationBtn,
+            elements.notificationDropdown,
+            elements.notificationBadge
+        ];
+        notifEls.forEach(el => {
+            if (!el) return;
+            if (isStudent) {
+                el.classList.add('hidden');
+                if (el.id === 'notification-dropdown-content') {
+                    el.classList.remove('show');
+                }
+            } else {
+                el.classList.remove('hidden');
+            }
+        });
     }
 
     /**
@@ -374,7 +440,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateGreeting() {
         const user = getUserFromStorage();
         if (elements.usernameElement && user) {
-            elements.usernameElement.textContent = `${getTranslation('welcome-user')}${user.username || 'User'}`;
+            const roleSuffix = user.role ? ` (${user.role})` : '';
+            elements.usernameElement.textContent = `${getTranslation('welcome-user')}${user.username || 'User'}${roleSuffix}`;
         }
     }
 
@@ -459,12 +526,11 @@ document.addEventListener('DOMContentLoaded', function() {
      * @param {Object} user - User object
      */
     function handleLeavePortalAccess(button, user) {
-    button.textContent = 'Authenticating...';
-    // Use proxy for Leave Portal due to CSRF session requirements
-    const proxyUrl = `${API_BASE_URL}?endpoint=leave_portal_proxy&username=${encodeURIComponent(user.username)}`;
-    window.open(proxyUrl, '_blank');
-    resetButtonState(button);
-}
+        button.textContent = 'Opening...';
+        // Redirect to login page as requested
+        window.open('https://leave.final.digital/index.php', '_blank');
+        resetButtonState(button);
+    }
 
     /**
      * Handles SIS platform access - direct access only
@@ -475,6 +541,8 @@ document.addEventListener('DOMContentLoaded', function() {
         window.open(SIS_URL, '_blank');
         resetButtonState(button);
     }
+
+
 
     /**
      * Handles LMS platform access
@@ -558,12 +626,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function setupLmsAccessButtons(list) {
         list.querySelectorAll('.lms-access-btn').forEach(btn => {
             btn.onclick = function() {
-                handleLmsSubplatformAccess(
-                    this.dataset.url, 
-                    this.dataset.login, 
-                    this.dataset.notif, 
-                    this
-                );
+                // Open the subplatform's real login page directly
+                const baseUrl = this.dataset.url || '';
+                const loginPath = this.dataset.login || '';
+                try {
+                    const absoluteUrl = loginPath
+                        ? new URL(loginPath, baseUrl).toString()
+                        : (baseUrl || null);
+                    if (absoluteUrl) {
+                        window.open(absoluteUrl, '_blank');
+                    } else {
+                        showNotification('Login URL not available for this sub-platform.', 'warning');
+                    }
+                } catch (e) {
+                    console.error('Failed to build sub-platform URL', e);
+                    showNotification('Invalid sub-platform URL.', 'error');
+                }
             };
         });
     }
@@ -636,9 +714,48 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Platforms data received:', data);
                 if (data.success && data.platforms && data.platforms.length > 0) {
                     console.log('Creating platform cards for:', data.platforms.length, 'platforms');
-                    data.platforms.forEach(platform => {
+                    
+                    // Filter platforms based on user role
+                    const user = getUserFromStorage();
+                    const userRole = (user && user.role) ? user.role : 'instructor';
+                    const isStudent = userRole === 'student';
+                    
+                    let filteredPlatforms = data.platforms;
+                    if (isStudent) {
+                        // Students only see Document Application System, Summer School Application, Accommodation Booking Portal, Support Center, Student Exam Registration, Exemption exam form, Resit Exams Application, SIS, and LMS
+                        filteredPlatforms = data.platforms.filter(platform => 
+                            platform.name === 'Document Application System' || 
+                            platform.name === 'Summer School Application' ||
+                            platform.name === 'Accommodation Booking Portal' ||
+                            platform.name === 'Support Center' ||
+                            platform.name === 'Student Exam Registration' ||
+                            platform.name === 'Exemption exam form' ||
+                            platform.name === 'Resit Exams Application' ||
+                            platform.name === 'SIS' ||
+                            platform.name === 'LMS'
+                        );
+                        console.log('Filtered platforms for student:', filteredPlatforms.length, 'platforms');
+                    } else {
+                        // Instructors and admins see all platforms EXCEPT student-specific ones
+                        filteredPlatforms = data.platforms.filter(platform => 
+                            platform.name !== 'Document Application System' && 
+                            platform.name !== 'Summer School Application' &&
+                            platform.name !== 'Accommodation Booking Portal' &&
+                            platform.name !== 'Support Center' &&
+                            platform.name !== 'Student Exam Registration' &&
+                            platform.name !== 'Exemption exam form' &&
+                            platform.name !== 'Resit Exams Application'
+                        );
+                        console.log('Filtered platforms for instructor/admin:', filteredPlatforms.length, 'platforms');
+                    }
+                    
+                    if (filteredPlatforms.length > 0) {
+                        filteredPlatforms.forEach(platform => {
                         createPlatformCard(platform, elements.platformsContainer);
                     });
+                    } else {
+                        elements.platformsContainer.innerHTML = '<p>No platforms available for your role.</p>';
+                    }
                 } else {
                     elements.platformsContainer.innerHTML = '<p>No platforms found.</p>';
                 }
@@ -660,22 +777,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const { platformUrl, buttonClass, buttonText } = getPlatformButtonConfig(platform);
         
-        // Add direct access button for LMS and Leave and Absence platforms
-        const directAccessButton = platform.name === 'LMS' ? `
-            <a href="https://lms0.final.edu.tr/" 
-               class="btn btn-primary" 
-               target="_blank" 
-               style="margin-left: 10px; display: inline-block !important; visibility: visible !important;">
-                <span style="margin-right:6px;">\u{1F310}</span>${getTranslation('direct-access')}
-            </a>
-        ` : platform.name === 'Leave and Absence' ? `
-            <a href="https://leave.final.digital/" 
-               class="btn btn-primary" 
-               target="_blank" 
-               style="margin-left: 10px; display: inline-block !important; visibility: visible !important;">
-                <span style="margin-right:6px;">\u{1F310}</span>${getTranslation('direct-access')}
-            </a>
-        ` : '';
+        // Check if user is a student
+        const user = getUserFromStorage();
+        const userRole = (user && user.role) ? user.role : 'instructor';
+        const isStudent = userRole === 'student';
+        
+        // No direct access buttons (LMS and Leave both use main Access action)
+        const directAccessButton = '';
         
         console.log('Creating platform card for:', platform.name);
         console.log('Is LMS platform?', platform.name === 'LMS');
@@ -708,13 +816,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Button text:', directAccessBtn.textContent);
                 console.log('Button styles:', window.getComputedStyle(directAccessBtn));
             }
-        } else if (platform.name === 'Leave and Absence') {
-            const directAccessBtn = platformCard.querySelector('a[href="https://leave.final.digital/"]');
-            console.log('Leave and Absence direct access button found in DOM:', directAccessBtn);
-            if (directAccessBtn) {
-                console.log('Button text:', directAccessBtn.textContent);
-                console.log('Button styles:', window.getComputedStyle(directAccessBtn));
-            }
         }
     }
 
@@ -724,7 +825,7 @@ document.addEventListener('DOMContentLoaded', function() {
      * @returns {Object} Button configuration
      */
     function getPlatformButtonConfig(platform) {
-        const specialPlatforms = ['RMS', 'SIS', 'LMS', 'Leave and Absence'];
+        const specialPlatforms = ['RMS', 'SIS', 'LMS', 'LMS0', 'Leave and Absence', 'Document Application System', 'Summer School Application', 'Accommodation Booking Portal', 'Support Center', 'Student Exam Registration', 'Exemption exam form', 'Resit Exams Application'];
         const isSpecialPlatform = specialPlatforms.includes(platform.name);
         // Special case: SIS should be a direct link
         if (platform.name === 'SIS') {
@@ -734,6 +835,86 @@ document.addEventListener('DOMContentLoaded', function() {
                 buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
             };
         }
+        // Special case: LMS should open sub-platform modal (both roles)
+        if (platform.name === 'LMS') {
+            return {
+                platformUrl: '#',
+                buttonClass: 'btn btn-primary access-platform-btn',
+                buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+            };
+        }
+        // Special case: LMS0 should be a direct link
+        if (platform.name === 'LMS0') {
+            return {
+                platformUrl: 'https://lms0.final.edu.tr',
+                buttonClass: 'btn btn-primary',
+                buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+            };
+        }
+        // Special case: Document Application System should be direct access to login
+        if (platform.name === 'Document Application System') {
+            return {
+                platformUrl: 'https://docs.final.edu.tr/pages/login',
+                buttonClass: 'btn btn-primary',
+                buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+            };
+        }
+        // Special case: Leave and Absence should redirect to login page
+        if (platform.name === 'Leave and Absence') {
+            return {
+                platformUrl: 'https://leave.final.digital/index.php',
+                buttonClass: 'btn btn-primary',
+                buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+            };
+        }
+        // Special case: Summer School Application should be direct access
+        if (platform.name === 'Summer School Application') {
+            return {
+                platformUrl: 'https://online.final.edu.tr/yazokulu/login.php',
+                buttonClass: 'btn btn-primary',
+                buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+            };
+        }
+        // Special case: Accommodation Booking Portal should be direct access
+        if (platform.name === 'Accommodation Booking Portal') {
+            return {
+                platformUrl: 'https://dorms.final.edu.tr/',
+                buttonClass: 'btn btn-primary',
+                buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+            };
+        }
+                    // Special case: Support Center should be direct access to login
+            if (platform.name === 'Support Center') {
+                return {
+                    platformUrl: 'https://destek.final.edu.tr/index.php',
+                    buttonClass: 'btn btn-primary',
+                    buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+                };
+            }
+            // Special case: Student Exam Registration should be direct access
+            if (platform.name === 'Student Exam Registration') {
+                return {
+                    platformUrl: 'https://online.final.edu.tr/exam/',
+                    buttonClass: 'btn btn-primary',
+                    buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+                };
+            }
+            // Special case: Exemption exam form should be direct access
+            if (platform.name === 'Exemption exam form') {
+                return {
+                    platformUrl: 'https://online.final.edu.tr/muafiyet',
+                    buttonClass: 'btn btn-primary',
+                    buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+                };
+            }
+            // Special case: Resit Exams Application should be direct access
+            if (platform.name === 'Resit Exams Application') {
+                return {
+                    platformUrl: 'https://online.final.edu.tr/resit/login.php',
+                    buttonClass: 'btn btn-primary',
+                    buttonText: `<span style="margin-right:6px;">\u{1F517}</span>${getTranslation('access-platform')}`
+                };
+            }
         return {
             platformUrl: isSpecialPlatform ? '#' : platform.url,
             buttonClass: isSpecialPlatform ? 'btn btn-primary access-platform-btn' : 'btn btn-primary',
@@ -1183,8 +1364,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (notification.platform === 'RMS' && user && user.username) {
             notificationUrl = `rms_auth_bridge.php?username=${encodeURIComponent(user.username)}&type=notifications&page=Dashboard/notifications.php`;
         } else if (notification.platform === 'Leave and Absence' && user && user.username) {
-            // Use proxy for Leave Portal notifications due to CSRF session requirements
-            notificationUrl = `${API_BASE_URL}?endpoint=leave_portal_proxy&username=${encodeURIComponent(user.username)}&page=notifications/all_notifications.php`;
+            // Use bridge authentication for Leave Portal notifications
+            notificationUrl = `rms_auth_bridge.php?username=${encodeURIComponent(user.username)}&type=notifications&page=notifications/all_notifications.php&platform=leave`;
                          } else if (notification.platform === 'LMS' && user && user.username) {
                      // Use server-side direct link for LMS notifications
                              const subplatformName = notification.subplatform || 'Unknown';

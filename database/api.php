@@ -282,694 +282,17 @@ header('Access-Control-Allow-Headers: Content-Type');
 /**
  * Universal proxy resource handler for CSS, JS, images, and other assets
  */
-function handleProxyResource() {
 
-        $platform = $_GET['platform'] ?? '';
-        $username = $_GET['username'] ?? '';
-        $resourcePath = $_GET['resource'] ?? '';
-        $subplatform = $_GET['subplatform'] ?? '';
-        
-        if (!$platform || !$username || !$resourcePath) {
-
-                http_response_code(400);
-                echo json_encode(['error' => 'Missing required parameters']);
-                return;
-            
-    }
-        
-        // Decode the resource path
-        $resourcePath = urldecode($resourcePath);
-        
-        // Clean up malformed paths
-        $resourcePath = preg_replace('/^\.\//', '', $resourcePath); // Remove leading ./
-        $resourcePath = preg_replace('/^\/+/', '', $resourcePath);  // Remove leading slashes
-        $resourcePath = trim($resourcePath);
-        
-        // Skip if resource path is empty or invalid
-        if (empty($resourcePath) || $resourcePath === '.' || $resourcePath === '/') {
-            http_response_code(400);
-            echo json_encode(['error' => 'Invalid resource path']);
-            return;
-        }
-        
-        // Check if this is actually a PHP page that should be handled as a page request, not a resource
-        if (preg_match('/\.php$/i', $resourcePath)) {
-            // This is a PHP file, redirect to appropriate page handler
-            if ($platform === 'leave') {
-                $_GET['endpoint'] = 'leave_portal_proxy';
-                $_GET['username'] = $username;
-                $_GET['page'] = $resourcePath;
-                handleLeavePortalDashboardProxy();
-                return;
-            } elseif ($platform === 'rms') {
-                $_GET['endpoint'] = 'rms_dashboard_proxy';
-                $_GET['username'] = $username;
-                $_GET['page'] = $resourcePath;
-                handleRmsDashboardProxy();
-                return;
-            }
-        }
-        
-        // Debug logging
-        $logFile = __DIR__ . '/php_errors.log';
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Proxy resource request: platform=$platform, resource=$resourcePath\n", FILE_APPEND);
-        
-        // Platform base URLs
-        $baseUrls = [
-            'rms' => 'https://rms.final.digital',
-            'leave' => 'https://leave.final.digital',
-            'lms' => '' // Will be determined by subplatform
-        ];
-        
-        if ($platform === 'lms') {
-
-                $subplatform = $_GET['subplatform'] ?? '';
-                $subplatformData = getLmsSubplatformByIdentifier($subplatform);
-                if (!$subplatformData) {
-
-                        http_response_code(404);
-                        echo json_encode(['error' => 'LMS subplatform not found']);
-                        return;
-                    
-        }
-                $baseUrl = rtrim($subplatformData['url'], '/');
-            
-    }
-    else {
-
-                $baseUrl = $baseUrls[$platform] ?? '';
-            
-    }
-        
-        if (!$baseUrl) {
-
-                http_response_code(400);
-                echo json_encode(['error' => 'Invalid platform']);
-                return;
-            
-    }
-        
-        // Construct full resource URL
-        $resourceUrl = $baseUrl . '/' . ltrim($resourcePath, '/');
-        
-        // Debug logging for resource URL construction
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Constructed resource URL: $resourceUrl\n", FILE_APPEND);
-        
-        // Get credentials for authentication
-        $platformName = $platform === 'leave' ? 'Leave and Absence' : strtoupper($platform);
-        $credentials = get_platform_credentials($username, $platformName);
-        
-        if (!$credentials) {
-
-                http_response_code(401);
-                echo json_encode(['error' => 'No credentials found']);
-                return;
-            
-    }
-        
-        // Fetch the resource with authentication
-        $cookieFileName = $credentials['platform_username'] . '_' . ($platform === 'leave' ? 'LeavePortal' : ucfirst($platform)) . '.txt';
-        $cookieFile = __DIR__ . '/../cookies/' . $cookieFileName;
-        
-        $ch = curl_init($resourceUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept: */*',
-            'Accept-Language: en-US,en;q=0.9',
-            'Cache-Control: no-cache'
-        ]);
-        
-        $content = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-        curl_close($ch);
-        
-        if ($httpCode !== 200) {
-
-                http_response_code($httpCode);
-                echo $content;
-                return;
-            
-    }
-        
-        // Set appropriate content type
-        if ($contentType) {
-
-                header('Content-Type: ' . $contentType);
-            
-    }
-        
-        // Cache headers for static resources
-        if (preg_match('/\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf)$/i', $resourcePath)) {
-
-                header('Cache-Control: public, max-age=3600');
-                header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT');
-            
-    }
-        
-        // Special handling for CSS files to rewrite font URLs
-        if ($platform === 'lms' && (stripos($contentType, 'text/css') !== false || strpos($resourcePath, 'styles.php') !== false)) {
-            
-            // Build font proxy URL
-            $fontProxyUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . '?endpoint=lms_font_proxy&username=' . urlencode($username);
-            
-            if ($subplatform) {
-                $fontProxyUrl .= '&subplatform=' . urlencode($subplatform);
-            }
-            
-            $fontProxyUrl .= '&fontpath=';
-            
-            // Rewrite CSS url() paths for fonts within the CSS file content
-            $content = preg_replace_callback(
-                '/url\(["\']?([^"\']*(?:\.(woff2?|ttf|eot|otf)|font\.php)[^"\']*)["\']?\)/i',
-                function($matches) use ($fontProxyUrl, $resourcePath) {
-                    $fontUrl = trim($matches[1], '"\'');
-                    
-                    // Don't rewrite if already contains our proxy endpoint
-                    if (strpos($fontUrl, 'endpoint=lms_font_proxy') !== false) {
-                        return $matches[0];
-                    }
-                    
-                    // Handle relative font.php URLs
-                    if (strpos($fontUrl, 'font.php') !== false && strpos($fontUrl, 'http') !== 0) {
-                        if (strpos($fontUrl, '/LMS/') === 0) {
-                            // URL starts with /LMS/, extract everything after /LMS/
-                            $fontPath = substr($fontUrl, 5);
-                        } else {
-                            // Other relative font.php URLs
-                            $fontPath = ltrim($fontUrl, '/');
-                        }
-                        $encodedFontPath = urlencode($fontPath);
-                        $finalFontProxyUrl = $fontProxyUrl . $encodedFontPath;
-                        return 'url("' . $finalFontProxyUrl . '")';
-                    }
-                    
-                    return $matches[0];
-                },
-                $content
-            );
-        }
-        
-        echo $content;
-}
 
 /**
  * Enhanced URL rewriting for perfect proxy display
  */
-function rewriteUrlsForProxy($content, $platform, $username, $baseUrl, $proxyBaseUrl, $subplatform = null) {
-    // DEBUG: Log function call
-    error_log("[DEBUG] rewriteUrlsForProxy called: platform=$platform, subplatform=$subplatform, content_length=" . strlen($content));
-    error_log("[DEBUG] baseUrl=$baseUrl, proxyBaseUrl=$proxyBaseUrl");
-    
-    // Trim any leading whitespace, BOM, or other content that might interfere with DOCTYPE
-    $content = ltrim($content, "\x00\x0B\xEF\xBB\xBF \t\n\r");
-    
-    // Remove any XML declarations or other content before DOCTYPE
-    $content = preg_replace('/^<\?xml[^>]*\?>\s*/i', '', $content);
-    
-    // Fix DOCTYPE to prevent KaTeX quirks mode warning
-    if (!preg_match('/<!DOCTYPE\s+html/i', $content)) {
-        // Check if there's any DOCTYPE and replace it, or add if none exists
-        if (preg_match('/<!DOCTYPE[^>]*>/i', $content)) {
-            // Replace any existing DOCTYPE with HTML5 DOCTYPE
-            $content = preg_replace('/<!DOCTYPE[^>]*>/i', '<!DOCTYPE html>', $content);
-        } else {
-            // Add HTML5 DOCTYPE at the very beginning
-            $content = "<!DOCTYPE html>\n" . $content;
-        }
-    }
-    
-    // Ensure the HTML tag follows immediately after DOCTYPE (no comments or whitespace)
-    $content = preg_replace('/^(<!DOCTYPE html>)\s*<!--.*?-->\s*(<html)/is', '$1$2', $content);
-    
-    // Ensure proper meta charset is present as first meta tag
-    if (!preg_match('/<meta[^>]*charset[^>]*>/i', $content)) {
-        $content = preg_replace('/(<head[^>]*>)/i', '$1' . "\n" . '<meta charset="UTF-8">', $content);
-    } else {
-        // Move charset meta to be first in head
-        $content = preg_replace('/(<head[^>]*>)(.*?)(<meta[^>]*charset[^>]*>)(.*?)/is', '$1$3$2$4', $content);
-    }
 
-    // Ensure proper viewport meta tag for responsive rendering
-    if (!preg_match('/<meta[^>]*name=["\']viewport["\'][^>]*>/i', $content)) {
-        $content = preg_replace('/(<meta charset[^>]*>)/i', '$1' . "\n" . '<meta name="viewport" content="width=device-width, initial-scale=1.0">', $content);
-    }
-
-    // Protect script and style blocks from URL rewriting
-    $protectedBlocks = [];
-    $blockId = 0;
-        
-        // Protect JavaScript blocks
-        $content = preg_replace_callback('/<script[^>]*>(.*?)<\/script>/is', function($matches) use (&$protectedBlocks, &$blockId) {
-
-                $id = "PROTECTED_SCRIPT_BLOCK_" . $blockId++;
-                $protectedBlocks[$id] = $matches[0];
-                return $id;
-            
-    }
-    , $content);
-        
-        // Protect CSS blocks
-        $content = preg_replace_callback('/<style[^>]*>(.*?)<\/style>/is', function($matches) use (&$protectedBlocks, &$blockId) {
-
-                $id = "PROTECTED_STYLE_BLOCK_" . $blockId++;
-                $protectedBlocks[$id] = $matches[0];
-                return $id;
-            
-    }
-    , $content);
-        
-        // Simplified URL patterns for rewriting - only essential resources
-        $patterns = [
-            // Only rewrite specific resource types that we know need proxying
-            // Static resources in attributes (src, href)
-            '/((?:src|href)=["\'])(\\.?\\/?)([^"\'\s>)]+\.(?:css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf))/i',
-            // Font resources specifically
-            '/((?:src|href)=["\'])(\\.?\\/?)([^"\'\s>)]*font\.php[^"\'\s>)]*)/i',
-            // Image resources specifically
-            '/((?:src|href)=["\'])(\\.?\\/?)([^"\'\s>)]*image\.php[^"\'\s>)]*)/i',
-            // CSS url() references for static resources
-            '/url\(["\']?(\\.?\\/?)([^"\'()]+\.(?:css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf))["\']?\)/i',
-            // CSS url() references for fonts
-            '/url\(["\']?(\\.?\\/?)([^"\'()]*font\.php[^"\'()]*)["\']?\)/i',
-            // Moodle resource files that need proxying (styles, yui_combo, javascript) - relative URLs
-            '/((?:src|href)=["\'])(\\.?\\/?)([^"\'\s>)]*(?:styles|yui_combo|javascript)\.php[^"\'\s>)]*)(["\'])/i',
-            // Moodle resource files that need proxying (styles, yui_combo, javascript) - absolute URLs
-            '/((?:src|href)=["\'])(' . preg_quote($baseUrl, '/') . ')([^"\'\s>)]*(?:styles|yui_combo|javascript)\.php[^"\'\s>)]*)(["\'])/i',
-            // JSON-escaped JavaScript URLs (for YUI config and RequireJS paths)
-            '/(["\'`])(' . preg_quote($baseUrl, '/') . ')(\\/[^"\'`]*(?:styles|yui_combo|javascript)\.php[^"\'`]*)(["\'`])/i'
-        ];
-        
-        // Separate patterns for PHP pages (these should use the page proxy, not resource proxy)
-        // Exclude dynamic resource PHP files like font.php, image.php, file.php (but allow yui_combo.php, javascript.php, styles.php to be handled as resources)
-        $pagePatterns = [
-            // Absolute URLs to PHP pages from the target host (excluding resource PHP files)
-            '/(' . preg_quote($baseUrl, '/') . ')([^"\'\s>)]*\.php(?!\/[^"\'\s>)]*\.(?:woff|woff2|ttf|png|jpg|jpeg|gif|svg|ico))(?!.*(?:font|image|file)\.php)[^"\'\s>)]*)/i',
-            // Protocol-relative URLs to PHP pages (excluding resource PHP files) 
-            '/(\/\/' . preg_quote(parse_url($baseUrl, PHP_URL_HOST) . parse_url($baseUrl, PHP_URL_PATH), '/') . ')([^"\'\s>)]*\.php(?!\/[^"\'\s>)]*\.(?:woff|woff2|ttf|png|jpg|jpeg|gif|svg|ico))(?!.*(?:font|image|file)\.php)[^"\'\s>)]*)/i',
-            // Action attributes pointing to PHP files (excluding resource PHP files)
-            '/(action=["\'])(\\.?\\/?)([^"\'\s>)]+\.php(?!\/[^"\'\s>)]*\.(?:woff|woff2|ttf|png|jpg|jpeg|gif|svg|ico))(?!.*(?:font|image|file)\.php))/i',
-            // Links to PHP pages (excluding resource PHP files)
-            '/(href=["\'])(\\.?\\/?)([^"\'\s>)]+\.php(?!\/[^"\'\s>)]*\.(?:woff|woff2|ttf|png|jpg|jpeg|gif|svg|ico))(?!.*(?:font|image|file)\.php))/i'
-        ];
-        
-        // Process static resource patterns
-        foreach ($patterns as $patternIndex => $pattern) {
-            error_log("[DEBUG] Testing pattern $patternIndex: $pattern");
-            $content = preg_replace_callback($pattern, function($matches) use ($platform, $username, $proxyBaseUrl, $subplatform, $baseUrl, $patternIndex) {
-                error_log("[DEBUG] Pattern $patternIndex matched: " . json_encode($matches));
-                // Handle different pattern types based on match count and content
-                $resourcePath = '';
-                $prefix = '';
-                $suffix = '';
-                
-                // Determine pattern type and extract components
-                if (count($matches) == 5 && ($matches[1] === '"' || $matches[1] === "'" || $matches[1] === '`')) {
-                    // JSON-escaped URL pattern: ["']protocol://host[/path]["']
-                    $prefix = $matches[1];
-                    $resourcePath = $matches[3]; // Just the path part
-                    $suffix = $matches[4];
-                } elseif (count($matches) == 5 && strpos($matches[1], '=') !== false) {
-                    // Absolute URL attribute pattern: src="protocol://host/path"
-                    $prefix = $matches[1];
-                    $resourcePath = $matches[3]; // Path part only
-                    $suffix = $matches[4];
-                } elseif (count($matches) == 5) {
-                    // Relative URL attribute pattern with closing quote: src="./path"
-                    $prefix = $matches[1];
-                    $relativePart = $matches[2]; // ./ or / part
-                    $resourcePath = $relativePart . $matches[3];
-                    $suffix = $matches[4];
-                } elseif (count($matches) == 4 && strpos($matches[1], '=') !== false) {
-                    // Absolute URL attribute pattern without closing quote: src="protocol://host/path"
-                    $prefix = $matches[1];
-                    $resourcePath = $matches[3]; // Path part only
-                    $suffix = '"';
-                } elseif (count($matches) >= 4) {
-                    // Relative URL attribute pattern: src="./path" or href="/path"
-                    $prefix = $matches[1];
-                    $relativePart = $matches[2]; // ./ or / part
-                    $resourcePath = $relativePart . $matches[3];
-                    $suffix = '';
-                } elseif (count($matches) >= 3) {
-                    if (strpos($matches[0], 'url(') === 0) {
-                        // CSS url() pattern
-                        $prefix = 'url("';
-                        $resourcePath = $matches[1] . $matches[2];
-                        $suffix = '")';
-                    } else {
-                        // Other patterns with prefix
-                        $prefix = $matches[1];
-                        $resourcePath = $matches[2];
-                        $suffix = '';
-                    }
-                } else {
-                    // Simple pattern
-                    $resourcePath = $matches[1] ?? $matches[0];
-                }
-                
-                // Clean up resource path
-                $resourcePath = ltrim($resourcePath, './');
-                
-                // Skip external URLs and data URIs
-                if (preg_match('/^(https?:\/\/|data:|#|javascript:|mailto:)/', $resourcePath)) {
-                    return $matches[0];
-                }
-                
-                // Skip if resource path is empty or just a dot
-                if (empty($resourcePath) || $resourcePath === '.' || $resourcePath === './') {
-                    return $matches[0];
-                }
-                
-                // Build proxy URL for resource - create from base script path to avoid parameter duplication
-                $scriptPath = parse_url($proxyBaseUrl, PHP_URL_SCHEME) . '://' . parse_url($proxyBaseUrl, PHP_URL_HOST) . parse_url($proxyBaseUrl, PHP_URL_PATH);
-                
-                // Special handling for font.php URLs - route to lms_font_proxy instead of proxy_resource
-                if ($platform === 'lms' && strpos($resourcePath, 'font.php') !== false) {
-                    $proxyUrl = $scriptPath . '?endpoint=lms_font_proxy&username=' . urlencode($username) . '&subplatform=' . urlencode($subplatform) . '&fontpath=' . urlencode($resourcePath);
-                // Special handling for image.php URLs - route to lms_image_proxy instead of proxy_resource
-                } elseif ($platform === 'lms' && strpos($resourcePath, 'image.php') !== false) {
-                    $proxyUrl = $scriptPath . '?endpoint=lms_image_proxy&username=' . urlencode($username) . '&subplatform=' . urlencode($subplatform) . '&imagepath=' . urlencode($resourcePath);
-                // Special handling for JavaScript and YUI combo files - route to lms_subplatform_proxy
-                } elseif ($platform === 'lms' && (strpos($resourcePath, 'yui_combo.php') !== false || strpos($resourcePath, 'styles.php') !== false || strpos($resourcePath, 'javascript.php') !== false)) {
-                    $proxyUrl = $scriptPath . '?endpoint=lms_subplatform_proxy&username=' . urlencode($username) . '&subplatform=' . urlencode($subplatform) . '&path=' . urlencode($resourcePath);
-                } else {
-                    $proxyUrl = $scriptPath . '?endpoint=proxy_resource&platform=' . $platform . '&username=' . urlencode($username) . '&resource=' . urlencode($resourcePath);
-                    
-                    if ($subplatform) {
-                        $proxyUrl .= '&subplatform=' . urlencode($subplatform);
-                    }
-                }
-                
-                // Return the rewritten URL with proper format
-                return $prefix . $proxyUrl . $suffix;
-            }, $content);
-        }
-        
-        // Process PHP page patterns (use page proxy instead of resource proxy)
-        foreach ($pagePatterns as $pattern) {
-            $content = preg_replace_callback($pattern, function($matches) use ($platform, $username, $proxyBaseUrl, $subplatform, $baseUrl) {
-                // Check if this is an absolute URL pattern
-                if (preg_match('/^https?:\/\//', $matches[0]) || preg_match('/^\/\//', $matches[0])) {
-                    // Absolute URL pattern: matches[1] = protocol+host, matches[2] = full path
-                    $fullPath = $matches[2];
-                    
-                    // Extract the base path from the baseUrl to remove it from the resource path
-                    $basePath = parse_url($baseUrl, PHP_URL_PATH);
-                    if ($basePath && $basePath !== '/' && strpos($fullPath, $basePath) === 0) {
-                        // Remove the base path from the full path
-                        $pagePath = substr($fullPath, strlen($basePath));
-                    } else {
-                        $pagePath = ltrim($fullPath, '/');
-                    }
-                    
-                    $prefix = '';
-                } else {
-                    // Attribute pattern
-                    $prefix = $matches[1];
-                    $relativePart = $matches[2]; // ./ or / part
-                    $pagePath = $relativePart . $matches[3];
-                }
-                
-                // Clean up page path
-                $pagePath = ltrim($pagePath, './');
-                
-                // Skip external URLs
-                if (preg_match('/^(https?:\/\/|data:|#|javascript:|mailto:)/', $pagePath)) {
-                    return $matches[0];
-                }
-                
-                // Build proxy URL for PHP page - create from base script path to avoid parameter duplication
-                $scriptPath = parse_url($proxyBaseUrl, PHP_URL_SCHEME) . '://' . parse_url($proxyBaseUrl, PHP_URL_HOST) . parse_url($proxyBaseUrl, PHP_URL_PATH);
-                
-                // Choose correct endpoint based on platform
-                if ($platform === 'leave') {
-                    $endpointName = 'leave_portal_proxy';
-                } elseif ($platform === 'lms') {
-                    $endpointName = 'lms_subplatform_proxy';  // All LMS resources go through subplatform proxy
-                } else {
-                    $endpointName = $platform . '_dashboard_proxy';
-                }
-                
-                $proxyUrl = $scriptPath . '?endpoint=' . $endpointName . '&username=' . urlencode($username) . '&page=' . urlencode($pagePath);
-                
-                if ($subplatform) {
-                    $proxyUrl .= '&subplatform=' . urlencode($subplatform);
-                }
-                
-                return $prefix . $proxyUrl;
-            }, $content);
-        }
-        
-        // Restore protected blocks
-        foreach ($protectedBlocks as $id => $block) {
-
-                $content = str_replace($id, $block, $content);
-            
-    }
-        
-        return $content;
-}
 
 /**
  * Inject proxy-aware JavaScript for perfect navigation
  */
-function injectProxyJavaScript($content, $platform, $username, $proxyBaseUrl, $subplatform = null) {
-    $cacheVersion = time(); // Cache busting timestamp
-    $script = '<script type="text/javascript">
-/* Proxy JavaScript v' . $cacheVersion . ' */
-(function() {
-    // Ensure standards mode for KaTeX compatibility
-    if (document.compatMode !== "CSS1Compat") {
-        console.warn("Document not in standards mode - KaTeX may not work properly");
-        // Try to force standards mode by ensuring proper DOCTYPE
-        if (!document.doctype || document.doctype.name !== "html") {
-            console.warn("Missing or invalid DOCTYPE - adding HTML5 DOCTYPE");
-        }
-    }
-    
-    // Proxy configuration
-    window.PROXY_CONFIG = {
-        platform: "' . $platform . '",
-        username: "' . addslashes($username) . '",
-        proxyBaseUrl: "' . $proxyBaseUrl . '",
-        subplatform: "' . ($subplatform ? addslashes($subplatform) : '') . '"
-    };
-    
-    // Override form submissions to maintain proxy context
-    document.addEventListener("DOMContentLoaded", function() {
-        // Handle all forms
-        document.querySelectorAll("form").forEach(function(form) {
-            if (!form.hasAttribute("data-proxy-handled")) {
-                form.setAttribute("data-proxy-handled", "true");
-                
-                // Add hidden inputs for proxy context
-                if (!form.querySelector("input[name=\'proxy_platform\']")) {
-                    var platformInput = document.createElement("input");
-                    platformInput.type = "hidden";
-                    platformInput.name = "proxy_platform";
-                    platformInput.value = window.PROXY_CONFIG.platform;
-                    form.appendChild(platformInput);
-                    
-                    var usernameInput = document.createElement("input");
-                    usernameInput.type = "hidden";
-                    usernameInput.name = "proxy_username";
-                    usernameInput.value = window.PROXY_CONFIG.username;
-                    form.appendChild(usernameInput);
-                    
-                    if (window.PROXY_CONFIG.subplatform) {
-                        var subplatformInput = document.createElement("input");
-                        subplatformInput.type = "hidden";
-                        subplatformInput.name = "proxy_subplatform";
-                        subplatformInput.value = window.PROXY_CONFIG.subplatform;
-                        form.appendChild(subplatformInput);
-                    }
-                }
-            }
-        });
-        
-        // Extract and store session key for AJAX requests
-        window.PROXY_CONFIG.sesskey = null;
-        try {
-            // Try to extract from M.cfg first (most reliable)
-            if (window.M && window.M.cfg && window.M.cfg.sesskey) {
-                window.PROXY_CONFIG.sesskey = window.M.cfg.sesskey;
-            } else {
-                // Fallback: extract from hidden input or logout links
-                var sestkeyInput = document.querySelector("input[name=\'sesskey\']");
-                if (sestkeyInput) {
-                    window.PROXY_CONFIG.sesskey = sestkeyInput.value;
-                } else {
-                    // Extract from logout link as last resort
-                    var logoutLink = document.querySelector("a[href*=\'sesskey=\']");
-                    if (logoutLink) {
-                        var match = logoutLink.href.match(/sesskey=([^&]+)/);
-                        if (match) {
-                            window.PROXY_CONFIG.sesskey = match[1];
-                        }
-                    }
-                }
-            }
-            console.log("Extracted sesskey:", window.PROXY_CONFIG.sesskey);
-        } catch (e) {
-            console.warn("Failed to extract sesskey:", e);
-        }
-        
-        // Handle dynamic content loading (AJAX)
-        if (window.XMLHttpRequest) {
-            var originalOpen = XMLHttpRequest.prototype.open;
-            XMLHttpRequest.prototype.open = function(method, url, async, user, password) {
-                // Rewrite AJAX URLs to go through proxy
-                if (url && !url.match(/^(https?:|data:|#|javascript:|mailto:)/)) {
-                    var endpointName;
-                    // Special handling for different types of requests
-                    if (window.PROXY_CONFIG.platform === "leave") {
-                        endpointName = "leave_portal_proxy";
-                    } else if (window.PROXY_CONFIG.platform === "lms") {
-                        // For LMS, route different request types appropriately
-                        if (url.indexOf(\'/lib/ajax/service.php\') !== -1) {
-                            endpointName = "lms_ajax_proxy";
-                        } else {
-                            // All other LMS requests (CSS, images, JS) go through subplatform proxy
-                            endpointName = "lms_subplatform_proxy";
-                        }
-                        console.log("LMS XHR routing:", url, "->", endpointName);
-                    } else {
-                        endpointName = window.PROXY_CONFIG.platform + "_dashboard_proxy";
-                    }
-                    
-                    var proxyUrl = window.PROXY_CONFIG.proxyBaseUrl + "?endpoint=" + endpointName + "&username=" + encodeURIComponent(window.PROXY_CONFIG.username);
-                    
-                    if (endpointName === "lms_ajax_proxy") {
-                        proxyUrl += "&apipath=" + encodeURIComponent(url);
-                        // Add sesskey for AJAX requests if available
-                        if (window.PROXY_CONFIG.sesskey) {
-                            proxyUrl += "&sesskey=" + encodeURIComponent(window.PROXY_CONFIG.sesskey);
-                        }
-                    } else {
-                        proxyUrl += "&page=" + encodeURIComponent(url);
-                    }
-                    
-                    if (window.PROXY_CONFIG.subplatform) {
-                        proxyUrl += "&subplatform=" + encodeURIComponent(window.PROXY_CONFIG.subplatform);
-                    }
-                    url = proxyUrl;
-                    console.log("XMLHttpRequest proxied:", url);
-                }
-                return originalOpen.call(this, method, url, async, user, password);
-            };
-        }
-        
-        // Handle fetch API
-        if (window.fetch) {
-            var originalFetch = window.fetch;
-            window.fetch = function(input, init) {
-                if (typeof input === "string" && !input.match(/^(https?:|data:|#|javascript:|mailto:)/)) {
-                    var endpointName;
-                    // Special handling for different types of requests
-                    if (window.PROXY_CONFIG.platform === "leave") {
-                        endpointName = "leave_portal_proxy";
-                    } else if (window.PROXY_CONFIG.platform === "lms") {
-                        // For LMS, route different request types appropriately
-                        if (input.indexOf(\'/lib/ajax/service.php\') !== -1) {
-                            endpointName = "lms_ajax_proxy";
-                        } else {
-                            // All other LMS requests (CSS, images, JS) go through subplatform proxy
-                            endpointName = "lms_subplatform_proxy";
-                        }
-                        console.log("LMS Fetch routing:", input, "->", endpointName);
-                    } else {
-                        endpointName = window.PROXY_CONFIG.platform + "_dashboard_proxy";
-                    }
-                    
-                    var proxyUrl = window.PROXY_CONFIG.proxyBaseUrl + "?endpoint=" + endpointName + "&username=" + encodeURIComponent(window.PROXY_CONFIG.username);
-                    
-                    if (endpointName === "lms_ajax_proxy") {
-                        proxyUrl += "&apipath=" + encodeURIComponent(input);
-                        // Add sesskey for AJAX requests if available
-                        if (window.PROXY_CONFIG.sesskey) {
-                            proxyUrl += "&sesskey=" + encodeURIComponent(window.PROXY_CONFIG.sesskey);
-                        }
-                    } else {
-                        proxyUrl += "&page=" + encodeURIComponent(input);
-                    }
-                    
-                    if (window.PROXY_CONFIG.subplatform) {
-                        proxyUrl += "&subplatform=" + encodeURIComponent(window.PROXY_CONFIG.subplatform);
-                    }
-                    input = proxyUrl;
-                    console.log("Fetch API proxied:", input);
-                }
-                return originalFetch.call(this, input, init);
-            };
-        }
-        
-        // KaTeX compatibility checks
-        if (window.katex || document.querySelector("script[src*=\'katex\']") || document.querySelector("link[href*=\'katex\']")) {
-            if (document.compatMode !== "CSS1Compat") {
-                console.error("KaTeX detected but document is in quirks mode. Math rendering may fail.");
-                // Attempt to notify user
-                setTimeout(function() {
-                    if (window.console && console.warn) {
-                        console.warn("PROXY WARNING: Page may have DOCTYPE issues affecting KaTeX math rendering.");
-                    }
-                }, 1000);
-            } else {
-                console.log("KaTeX compatibility: Document in standards mode ✓");
-            }
-        }
-        
-        // Monitor for dynamically loaded KaTeX
-        if (window.MutationObserver) {
-            var katexObserver = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.type === "childList") {
-                        mutation.addedNodes.forEach(function(node) {
-                            if (node.nodeType === 1) { // Element node
-                                if (node.tagName === "SCRIPT" && node.src && node.src.includes("katex")) {
-                                    if (document.compatMode !== "CSS1Compat") {
-                                        console.error("KaTeX script loaded but document in quirks mode!");
-                                    }
-                                }
-                            }
-                        });
-                    }
-                });
-            });
-            katexObserver.observe(document.head || document.documentElement, {
-                childList: true,
-                subtree: true
-            });
-        }
-    });
-})();
-</script>';
-        
-        // Inject before closing head tag, or before closing body tag as fallback
-        if (strpos($content, '</head>') !== false) {
 
-                $content = str_replace('</head>', $script . '</head>', $content);
-            
-    }
-    elseif (strpos($content, '</body>') !== false) {
-
-                $content = str_replace('</body>', $script . '</body>', $content);
-            
-    }
-    else {
-
-                $content .= $script;
-            
-    }
-        
-        return $content;
-}
 
 // =============================================================================
 // LMS HELPER FUNCTIONS
@@ -1296,19 +619,16 @@ function handleLmsSubplatformDirectLink() {
         $logFile = __DIR__ . '/php_errors.log';
         file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] LMS Sub-platform Direct Link request for: $subplatformName, user: $username\n", FILE_APPEND);
 
-        // Get user credentials - use "LMS" as the platform name since that's how credentials are stored
-        $credentials = get_platform_credentials($username, 'LMS');
+        // Build credentials from the current request
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if (!$credentials) {
-
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] No LMS credentials found for user: $username\n", FILE_APPEND);
+                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] No credentials in request for LMS for user: $username\n", FILE_APPEND);
                 http_response_code(401);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
                 echo json_encode([
-                    'error' => 'No stored credentials for LMS',
-                    'message' => 'No LMS credentials found for this user.'
+                    'error' => 'Missing credentials',
+                    'message' => 'Provide password or password_hash in the request.'
                 ]);
                 return;
-            
     }
 
         $baseUrl = rtrim($targetSubplatform['url'], '/');
@@ -1505,29 +825,46 @@ function handleLogin() {
         
         if ($user) {
 
-                // User authenticated successfully - authenticate to all platforms
+                // User authenticated successfully - authenticate to all platforms using user's own credentials
                 $platformResults = [];
                 $platforms = get_platforms();
                 
-                foreach ($platforms as $platform) {
+                // Limit platform authentication during login to avoid delays/timeouts
+                // - Skip student-only/direct-link platforms (e.g., Document System, Summer School, Accommodation, Support, Exam portals)
+                // - Only pre-auth core staff platforms to preserve UX without blocking login
+                $corePlatforms = ['RMS', 'Leave and Absence', 'LMS'];
+                $userRole = isset($user['role']) ? $user['role'] : 'instructor';
+                if ($userRole === 'student') {
+                    // For students, do not attempt any backend platform auth during login
+                    $platformsForAuth = [];
+                } else {
+                    $platformsForAuth = array_values(array_filter($platforms, function ($p) use ($corePlatforms) {
+                        return in_array($p['name'], $corePlatforms, true);
+                    }));
+                }
+
+                // Build universal credentials from the login input
+                $universalCredentials = [
+                    'platform_username' => $user['username'],
+                    // Prefer password_hash if provided; else use plain password
+                    'platform_password' => ($password_hash ? $password_hash : $password)
+                ];
+                
+                foreach ($platformsForAuth as $platform) {
 
                         $platformName = $platform['name'];
                         $platformResult = [
                             'platform' => $platformName,
                             'authenticated' => false,
-                            'message' => 'No credentials found'
+                            'message' => 'Not attempted'
                         ];
-                        // Get stored credentials for this platform
-                        $credentials = get_platform_credentials($user['username'], $platformName);
-                        if ($credentials) {
 
-                                // Try to authenticate to the platform
-                                $authResult = authenticateToPlatform($platform, $credentials);
+                        // Authenticate to the platform using universal credentials
+                        $authResult = authenticateToPlatform($platform, $universalCredentials);
                                 $platformResult['authenticated'] = $authResult['success'];
                                 $platformResult['message'] = $authResult['message'];
                                 $platformResult['details'] = $authResult['details'] ?? null;
                             
-            }
                         $platformResults[] = $platformResult;
                     
         }
@@ -1540,7 +877,8 @@ function handleLogin() {
                     'user' => [
                         'id' => $user['id'],
                         'username' => $user['username'],
-                        'email' => $user['email']
+                        'email' => $user['email'],
+                        'role' => isset($user['role']) ? $user['role'] : 'instructor'
                     ],
                     'platforms' => $platformResults
                 ]);
@@ -1580,6 +918,8 @@ function authenticateToPlatform($platform, $credentials) {
                     return authenticateToSIS($credentials);
                 case 'LMS':
                     return authenticateToLMS($credentials);
+                case 'Document Application System':
+                    return authenticateToDocumentSystem($credentials);
                 default:
                     // For generic platforms, pass username, password, platformName, platform
                     $username = isset($credentials['platform_username']) ? $credentials['platform_username'] : '';
@@ -1587,6 +927,49 @@ function authenticateToPlatform($platform, $credentials) {
                     return authenticateToGenericPlatform($username, $password, $platformName, $platform);
             
     }
+}
+
+/**
+ * Build universal credentials for platform auth from the current request
+ * Tries JSON body, form POST, and headers. Returns ['platform_username','platform_password'] or null.
+ */
+function buildUniversalCredentialsFromRequest($fallbackUsername = null) {
+    // Prefer JSON body if available
+    $raw = file_get_contents('php://input');
+    $data = [];
+    if ($raw) {
+        $decoded = json_decode($raw, true);
+        if (is_array($decoded)) {
+            $data = $decoded;
+        }
+    }
+    // Merge with POST (in case body already consumed elsewhere, POST will still have values)
+    if (!empty($_POST)) {
+        foreach ($_POST as $k => $v) { $data[$k] = $v; }
+    }
+
+    // Headers fallback for credentials
+    $passwordHashHeader = null;
+    $passwordHeader = null;
+    foreach (['HTTP_X_PASSWORD_HASH','X_PASSWORD_HASH','HTTP_X_PASSWORD','X_PASSWORD'] as $hk) {
+        if (isset($_SERVER[$hk])) {
+            if (stripos($hk, 'HASH') !== false) { $passwordHashHeader = $_SERVER[$hk]; }
+            else { $passwordHeader = $_SERVER[$hk]; }
+        }
+    }
+
+    $username = isset($data['username']) ? $data['username'] : (isset($data['usernameOrEmail']) ? $data['usernameOrEmail'] : $fallbackUsername);
+    $password = isset($data['password']) ? $data['password'] : ($passwordHeader ?? null);
+    $password_hash = isset($data['password_hash']) ? $data['password_hash'] : ($passwordHashHeader ?? null);
+
+    if (!$username || (!$password && !$password_hash)) {
+        return null;
+    }
+
+    return [
+        'platform_username' => $username,
+        'platform_password' => ($password_hash ? $password_hash : $password)
+    ];
 }
 
 /**
@@ -1724,283 +1107,7 @@ function validateRMSSession($credentials, $cookieFile, $targetPage = 'Dashboard/
         }
 }
 
-/**
- * Authenticate to Leave Portal
- * 
- * @param array $credentials User credentials
- * @return array Authentication result
- */
-function authenticateToLeavePortal($credentials) {
 
-        $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_LeavePortal.txt';
-        $logFile = __DIR__ . '/php_errors.log';
-        
-        // Create cookies directory if it doesn't exist
-        if (!is_dir(__DIR__ . '/../cookies')) {
-
-                mkdir(__DIR__ . '/../cookies', 0755, true);
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Created cookies directory.", FILE_APPEND);
-            
-    }
-        
-        // Step 1: Get Leave Portal login page to establish session and extract CSRF token
-        $loginUrl = 'https://leave.final.digital/index.php';
-        $ch_login = curl_init($loginUrl);
-        curl_setopt($ch_login, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch_login, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch_login, CURLOPT_COOKIEJAR, $cookieFile);
-        curl_setopt($ch_login, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch_login, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch_login, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch_login, CURLOPT_HTTPHEADER, [
-            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        ]);
-        
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $loginResponse = curl_exec($ch_login);
-        $loginHttpCode = curl_getinfo($ch_login, CURLINFO_HTTP_CODE);
-        curl_close($ch_login);
-        
-        if ($loginHttpCode !== 200) {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Leave Portal login page access failed with HTTP code: " . $loginHttpCode, FILE_APPEND);
-                return ['success' => false, 'message' => 'Failed to access Leave Portal login page'];
-            
-    }
-        
-        // Extract CSRF token from the login page - try multiple patterns
-        $csrfToken = '';
-        $csrfPatterns = [
-            '/name="csrf_token" value="([^"]+)"/',
-            '/name="_token" value="([^"]+)"/',
-            '/name="token" value="([^"]+)"/',
-            '/<input[^>]*name=["\']csrf_token["\'][^>]*value=["\']([^"\']+)["\']/',
-            '/<input[^>]*value=["\']([^"\']+)["\'][^>]*name=["\']csrf_token["\']/',
-            '/csrf[_-]?token["\']?\s*:\s*["\']([^"\']+)["\']/',
-            '/meta\s+name=["\']csrf-token["\'][^>]*content=["\']([^"\']+)["\']/'
-        ];
-        
-        foreach ($csrfPatterns as $pattern) {
-
-                if (preg_match($pattern, $loginResponse, $matches)) {
-
-                        $csrfToken = $matches[1];
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Found CSRF token using pattern: " . $pattern, FILE_APPEND);
-                        break;
-                    
-        }
-            
-    }
-        
-        if (empty($csrfToken)) {
-
-                // Log a sample of the login page to help debug
-                $sample = substr($loginResponse, 0, 1000);
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Could not extract CSRF token. Login page sample: " . $sample, FILE_APPEND);
-                
-                // Try without CSRF token (some forms might not require it)
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Attempting login without CSRF token", FILE_APPEND);
-            
-    }
-    else {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] CSRF token extracted: " . substr($csrfToken, 0, 10) . "...", FILE_APPEND);
-            
-    }
-        
-        // Step 2: Submit login form with or without CSRF token
-        $authUrl = 'https://leave.final.digital/index.php';
-        $loginData = [
-            'username' => $credentials['platform_username'],
-            'password' => $credentials['platform_password']
-        ];
-        
-        // Add CSRF token if we found one
-        if (!empty($csrfToken)) {
-
-                $loginData['csrf_token'] = $csrfToken;
-            
-    }
-        
-        $ch_auth = curl_init($authUrl);
-        curl_setopt($ch_auth, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch_auth, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch_auth, CURLOPT_POST, true);
-        curl_setopt($ch_auth, CURLOPT_POSTFIELDS, http_build_query($loginData));
-        curl_setopt($ch_auth, CURLOPT_COOKIEJAR, $cookieFile);
-        curl_setopt($ch_auth, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch_auth, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch_auth, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch_auth, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded',
-            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Referer: ' . $authUrl
-        ]);
-        
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $authResponse = curl_exec($ch_auth);
-        $authHttpCode = curl_getinfo($ch_auth, CURLINFO_HTTP_CODE);
-        $authFinalUrl = curl_getinfo($ch_auth, CURLINFO_EFFECTIVE_URL);
-        curl_close($ch_auth);
-        
-        // Log authentication attempt
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Leave Portal Authentication attempt for user: " . $credentials['platform_username'] . ", HTTP Code: $authHttpCode, Final URL: $authFinalUrl", FILE_APPEND);
-        
-        // Check if authentication succeeded
-        $hasDashboard = strpos($authResponse, 'dashboard') !== false || strpos($authResponse, 'Dashboard') !== false || strpos($authResponse, 'adminDashboard') !== false;
-        $hasLoginForm = strpos($authResponse, 'login') !== false || strpos($authResponse, 'Login') !== false;
-        
-        if ($authHttpCode === 200 && (!$hasLoginForm || $hasDashboard)) {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Leave Portal authentication successful for user: " . $credentials['platform_username'], FILE_APPEND);
-                return [
-                    'success' => true,
-                    'message' => 'Leave Portal authentication successful',
-                    'details' => ['cookie_file' => basename($cookieFile)]
-                ];
-            
-    }
-    else {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Leave Portal authentication FAILED for user: " . $credentials['platform_username'], FILE_APPEND);
-                return [
-                    'success' => false,
-                    'message' => 'Leave Portal authentication failed',
-                    'details' => ['http_code' => $authHttpCode]
-                ];
-            
-    }
-}
-/**
- * Authenticate to SIS platform (simplified - direct access)
- * 
- * @param array $credentials User credentials
- * @return array Authentication result
- */
-function authenticateToSIS($credentials) {
-
-        $logFile = __DIR__ . '/php_errors.log';
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS Authentication attempt for user: " . $credentials['platform_username'], FILE_APPEND);
-        
-        // SIS login is on the same base URL
-        $loginUrl = 'https://sis.final.edu.tr/';
-        
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Trying SIS login URL: $loginUrl", FILE_APPEND);
-        
-        // First, get the login page to extract CAPTCHA if present
-        $ch = curl_init($loginUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, 'sis_cookies.txt');
-    // Save cookies
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        ]);
-
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS Login Page Response (HTTP $httpCode) for URL: $loginUrl", FILE_APPEND);
-
-        // Check if CAPTCHA is present in the response
-        $hasCaptcha = (strpos($response, 'captcha') !== false || 
-                       strpos($response, 'recaptcha') !== false ||
-                       strpos($response, 'g-recaptcha') !== false);
-
-        if ($hasCaptcha) {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS has CAPTCHA - returning CAPTCHA required response", FILE_APPEND);
-                return [
-                    'success' => false,
-                    'message' => 'SIS requires CAPTCHA verification',
-                    'captcha_required' => true,
-                    'login_url' => $loginUrl
-                ];
-            
-    }
-
-        // If no CAPTCHA, try to authenticate directly
-        $postData = [
-            'username' => $credentials['platform_username'],
-            'password' => $credentials['platform_password']
-        ];
-
-        $ch = curl_init($loginUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-        curl_setopt($ch, CURLOPT_COOKIEFILE, 'sis_cookies.txt');
-    // Use saved cookies
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/x-www-form-urlencoded',
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        ]);
-
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $error = curl_error($ch);
-        curl_close($ch);
-
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS Auth Response (HTTP $httpCode) for URL: $loginUrl\n" . substr($response, 0, 1000) . "\n", FILE_APPEND);
-        if ($error) {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS cURL Error: $error\n", FILE_APPEND);
-            
-    }
-
-        // Check if authentication was successful
-        if ($httpCode === 200 && (strpos($response, 'dashboard') !== false ||
-            strpos($response, 'welcome') !== false ||
-            strpos($response, 'logout') !== false ||
-            strpos($response, 'success') !== false ||
-            strpos($response, 'Student Information System') !== false)) {
-
-                
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS authentication successful for user: " . $credentials['platform_username'], FILE_APPEND);
-                return [
-                    'success' => true,
-                    'message' => 'SIS authentication successful'
-                ];
-            
-    }
-
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS authentication FAILED for user: " . $credentials['platform_username'] . " (HTTP: $httpCode)", FILE_APPEND);
-        return [
-            'success' => false,
-            'message' => 'SIS authentication failed',
-            'details' => ['http_code' => $httpCode, 'error' => $error]
-        ];
-}
-
-/**
- * Authenticate to LMS platform (no authentication required)
- * 
- * @param array $credentials User credentials
- * @return array Authentication result
- */
-function authenticateToLMS($credentials) {
-
-        $logFile = __DIR__ . '/php_errors.log';
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Authentication attempt for user: " . $credentials['platform_username'], FILE_APPEND);
-        
-        // LMS doesn't need authentication - always return success
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS authentication successful for user: " . $credentials['platform_username'] . " (no authentication required)", FILE_APPEND);
-        return [
-            'success' => true,
-            'message' => 'LMS authentication successful (no authentication required)'
-        ];
-}
 
 // =============================================================================
 // AUTHENTICATION & PLATFORM INTEGRATION FUNCTIONS
@@ -2246,11 +1353,11 @@ function handleRmsDirectAuth() {
                 return;
         }
 
-        // Get RMS credentials
-        $credentials = get_platform_credentials($username, 'RMS');
+        // Build credentials from current request instead of stored RMS credentials
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if (!$credentials) {
                 http_response_code(401);
-                echo json_encode(['error' => 'No RMS credentials found']);
+                echo json_encode(['error' => 'Missing credentials', 'message' => 'Provide password or password_hash in the request.']);
                 return;
         }
 
@@ -2361,246 +1468,7 @@ function handleRmsDirectAuth() {
         exit;
 }
 
-/**
- * LMS Direct Authentication - Authenticates user and redirects to LMS sub-platform with session
- * This function handles direct access to LMS sub-platforms
- */
-function handleLmsDirectAuth() {
-        global $method, $lms_subplatforms;
 
-        if ($method !== 'GET') {
-                http_response_code(405);
-                echo json_encode(['error' => 'Method not allowed']);
-                return;
-        }
-
-        $username = $_GET['username'] ?? '';
-        $subplatformName = $_GET['subplatform'] ?? '';
-        $targetPage = $_GET['page'] ?? 'my/';
-
-        if (!$username || !$subplatformName) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Username and sub-platform are required']);
-                return;
-        }
-
-        // Find the sub-platform configuration
-        $targetSubplatform = null;
-        foreach ($lms_subplatforms as $subplatform) {
-                if ($subplatform['name'] === $subplatformName) {
-                        $targetSubplatform = $subplatform;
-                        break;
-                }
-        }
-
-        if (!$targetSubplatform) {
-                http_response_code(404);
-                echo json_encode(['error' => 'Sub-platform not found']);
-                return;
-        }
-
-        // Get LMS credentials
-        $credentials = get_platform_credentials($username, 'LMS');
-        if (!$credentials) {
-                http_response_code(401);
-                echo json_encode(['error' => 'No LMS credentials found']);
-                return;
-        }
-
-        // Log the direct auth attempt
-        $logFile = __DIR__ . '/php_errors.log';
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Direct Auth attempt for user: $username, sub-platform: $subplatformName, target: $targetPage", FILE_APPEND);
-
-        // Get the cookie file path
-        $host = parse_url($targetSubplatform['url'], PHP_URL_HOST);
-        $cookieFile = __DIR__ . '/../cookies/' . $username . '_' . $host . '.txt';
-        
-        // Create cookies directory if it doesn't exist
-        if (!is_dir(__DIR__ . '/../cookies')) {
-                mkdir(__DIR__ . '/../cookies', 0755, true);
-        }
-
-        // Check if we have an existing session and validate it
-        $sessionValid = false;
-        if (file_exists($cookieFile)) {
-                // Test the session by making a request to the target page
-                $testUrl = $baseUrl . '/' . ltrim($targetPage, '/');
-                $ch = curl_init($testUrl);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-                curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                ]);
-                
-                $testResponse = curl_exec($ch);
-                $testHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                
-                if ($testHttpCode === 200) {
-                        $sessionValid = validateLmsSession($testResponse, $subplatformName, $logFile);
-                }
-        }
-        
-        // If session is not valid, re-authenticate
-        if (!$sessionValid) {
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Session invalid or expired, re-authenticating user: $username", FILE_APPEND);
-                
-                // Force re-authentication by removing old cookie file
-                if (file_exists($cookieFile)) {
-                        unlink($cookieFile);
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Removed old cookie file for user: $username", FILE_APPEND);
-                }
-                
-                // Authenticate to LMS sub-platform
-                $authResult = authenticateToLmsSubplatformInternal($username, $subplatformName, $targetSubplatform, $credentials, $logFile, $cookieFile);
-                if (!$authResult['success']) {
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS authentication failed for user: $username - " . $authResult['message'], FILE_APPEND);
-                        http_response_code(401);
-                        echo json_encode(['error' => 'LMS authentication failed: ' . $authResult['message']]);
-                        return;
-                }
-                
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS re-authentication successful for user: $username", FILE_APPEND);
-        } else {
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Existing session valid for user: $username", FILE_APPEND);
-        }
-
-        // Read and parse the cookie file
-        if (!file_exists($cookieFile)) {
-                http_response_code(500);
-                echo json_encode(['error' => 'Session cookie file not found']);
-                return;
-        }
-
-        $cookieContent = file_get_contents($cookieFile);
-        $cookies = [];
-        
-        // Parse Netscape format cookie file
-        $lines = explode("\n", $cookieContent);
-        foreach ($lines as $line) {
-                $line = trim($line);
-                if (empty($line) || $line[0] === '#') continue;
-                
-                $parts = explode("\t", $line);
-                if (count($parts) >= 7) {
-                        $domain = $parts[0];
-                        $path = $parts[2];
-                        $secure = $parts[3];
-                        $expiry = $parts[4];
-                        $name = $parts[5];
-                        $value = $parts[6];
-                        
-                        // Only include cookies for the LMS domain
-                        if ($domain === $host || $domain === '.' . $host) {
-                                $cookies[] = "$name=$value";
-                        }
-                }
-        }
-
-        if (empty($cookies)) {
-                http_response_code(500);
-                echo json_encode(['error' => 'No valid session cookies found']);
-                return;
-        }
-
-        // Build the target URL
-        $baseUrl = rtrim($targetSubplatform['url'], '/');
-        $targetUrl = $baseUrl . '/' . ltrim($targetPage, '/');
-        
-        // Add query parameters from current request
-        $queryParams = $_GET;
-        unset($queryParams['endpoint'], $queryParams['username'], $queryParams['subplatform'], $queryParams['page']);
-        if (!empty($queryParams)) {
-                $targetUrl .= (strpos($targetUrl, '?') !== false ? '&' : '?') . http_build_query($queryParams);
-        }
-
-        // Log successful authentication
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Direct Auth successful for user: $username, redirecting to: $targetUrl", FILE_APPEND);
-
-        // Get fresh logintoken for the form submission
-        $loginUrl = rtrim($targetSubplatform['url'], '/') . '/login/index.php';
-        $ch = curl_init($loginUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        ]);
-        
-        $loginPageResponse = curl_exec($ch);
-        curl_close($ch);
-        
-        // Extract logintoken from the login page
-        $logintoken = null;
-        if (preg_match('/name="logintoken" value="([^"]+)"/', $loginPageResponse, $matches)) {
-            $logintoken = $matches[1];
-        }
-
-        // Output HTML page with hidden form that will submit to LMS
-        ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Authenticating to LMS...</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-            background-color: #f5f5f5;
-        }
-        .loading {
-            margin: 20px 0;
-        }
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #3498db;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
-</head>
-<body>
-    <h2>Authenticating to LMS...</h2>
-    <div class="loading">
-        <div class="spinner"></div>
-    </div>
-        <p>Please wait while we authenticate you to <?php echo htmlspecialchars($subplatformName); ?>...</p>
-    
-    <form id="lmsLoginForm" method="POST" action="<?php echo htmlspecialchars($loginUrl); ?>" target="_blank" style="display: none;">
-        <input type="hidden" name="anchor" value="">
-        <input type="hidden" name="username" value="<?php echo htmlspecialchars($credentials['platform_username']); ?>">
-        <input type="hidden" name="password" value="<?php echo htmlspecialchars($credentials['platform_password']); ?>">
-        <?php if ($logintoken): ?>
-        <input type="hidden" name="logintoken" value="<?php echo htmlspecialchars($logintoken); ?>">
-        <?php endif; ?>
-        <input type="hidden" name="rememberusername" value="0">
-    </form>
-    
-    <script>
-        // Auto-submit the form after a short delay
-        setTimeout(function() {
-            console.log('Auto-submitting LMS login form...');
-            document.getElementById('lmsLoginForm').submit();
-        }, 2000);
-    </script>
-</body>
-</html>
-        <?php
-        exit;
-}
 
 /**
  * RMS Notifications Direct Authentication - Authenticates user and redirects to RMS notifications with session
@@ -2625,7 +1493,7 @@ function handleRmsNotificationsDirectAuth() {
         }
 
         // Get RMS credentials and authenticate
-        $credentials = get_platform_credentials($username, 'RMS');
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if (!$credentials) {
                 http_response_code(401);
                 echo json_encode(['error' => 'No RMS credentials found']);
@@ -2733,265 +1601,6 @@ function handleRmsNotificationsDirectAuth() {
         exit;
 }
 
-/**
- * Enhanced Leave Portal dashboard proxy with perfect display
- */
-function handleLeavePortalDashboardProxy() {
-
-        $method = $_SERVER['REQUEST_METHOD']; // Get method locally instead of relying on global
-
-        if (!in_array($method, ['GET', 'POST'])) {
-
-                http_response_code(405);
-                echo json_encode(['error' => 'Method not allowed']);
-                return;
-            
-    }
-
-        $username = $_GET['username'] ?? '';
-        $page = $_GET['page'] ?? 'Dashboard/adminDashboard.php';
-
-        // Debug: Log all page requests
-        $logFile = __DIR__ . '/php_errors.log';
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Leave Portal page request: username=$username, page=$page, method=$method\n", FILE_APPEND);
-
-        if (!$username) {
-
-                http_response_code(400);
-                echo json_encode(['error' => 'Username is required']);
-                return;
-            
-    }
-
-        // Check if this is a local API call that should be handled internally
-        // This mapping ensures our APIs match the real Leave Portal endpoints
-        $localApiEndpoints = [
-            // Real notification endpoints from Leave Portal (exact matches)
-            'notifications/get_notification_count.php' => 'get_notification_count',
-            'notifications/toggle_all_notifications_read.php' => 'toggle_all_notifications_read',
-            'notifications/clear_old_notifications.php' => 'clear_old_notifications',
-            'notifications/toggle_notification_read.php' => 'toggle_notification_read',
-            'notifications/all_notifications.php' => 'notifications',
-            
-            // Legacy notification endpoints for backward compatibility
-            'get_notification_count.php' => 'get_notification_count',
-            'get_notifications_dropdown.php' => 'get_notifications_dropdown',
-            'mark_notification_read.php' => 'mark_notification_read',
-            'toggle_notification_read.php' => 'toggle_notification_read',
-            'toggle_all_notifications_read.php' => 'toggle_all_notifications_read',
-            'clear_old_notifications.php' => 'clear_old_notifications',
-            'update_notification_count.php' => 'update_notification_count',
-            'delete_notification.php' => 'delete_notification',
-            
-            // Additional common Leave Portal APIs that might exist
-            'notifications.php' => 'notifications',
-            'all_notifications.php' => 'notifications',
-            'fetch_notifications.php' => 'get_notifications_dropdown',
-            'notification_details.php' => 'get_notifications_dropdown',
-            'read_notification.php' => 'mark_notification_read',
-            'unread_notification.php' => 'toggle_notification_read',
-            'mark_all_read.php' => 'toggle_all_notifications_read',
-            'clear_notifications.php' => 'clear_old_notifications',
-            
-            // User/Session Management APIs (if they exist in Leave Portal)
-            'get_user_info.php' => 'get_user_info',
-            'update_user_settings.php' => 'update_user_settings',
-            'logout.php' => 'logout',
-            
-            // Leave Management APIs (common in leave portals)
-            'submit_leave.php' => 'submit_leave',
-            'get_leave_balance.php' => 'get_leave_balance',
-            'get_leave_history.php' => 'get_leave_history',
-            'cancel_leave.php' => 'cancel_leave',
-            'approve_leave.php' => 'approve_leave',
-            'reject_leave.php' => 'reject_leave',
-            
-            // Dashboard/Stats APIs
-            'get_dashboard_stats.php' => 'get_dashboard_stats',
-            'get_calendar_events.php' => 'get_calendar_events',
-            'get_pending_approvals.php' => 'get_pending_approvals'
-        ];
-
-        if (isset($localApiEndpoints[$page])) {
-            // This is a local API call, redirect to our internal handler
-            $_GET['endpoint'] = $localApiEndpoints[$page];
-            $_GET['username'] = $username;
-            
-            // Debug logging for API calls
-            $logFile = __DIR__ . '/php_errors.log';
-            $postData = file_get_contents('php://input');
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Local API call: $page -> {$localApiEndpoints[$page]}, Method: $method, POST data: " . substr($postData, 0, 200) . "\n", FILE_APPEND);
-            
-            // Include the request handling logic
-            switch ($localApiEndpoints[$page]) {
-                // Notification Management
-                case 'get_notification_count':
-                    handleGetNotificationCount();
-                    return;
-                case 'get_notifications_dropdown':
-                    handleGetNotificationsDropdown();
-                    return;
-                case 'mark_notification_read':
-                    handleMarkNotificationRead();
-                    return;
-                case 'toggle_notification_read':
-                    handleToggleNotificationRead();
-                    return;
-                case 'toggle_all_notifications_read':
-                    handleToggleAllNotificationsRead();
-                    return;
-                case 'clear_old_notifications':
-                    handleClearOldNotifications();
-                    return;
-                case 'update_notification_count':
-                    handleUpdateNotificationCount();
-                    return;
-                case 'delete_notification':
-                    handleDeleteNotification();
-                    return;
-                case 'clear_notification_actions':
-                    clearNotificationActions();
-                    echo json_encode(['success' => true, 'message' => 'Notification actions cleared']);
-                    return;
-                case 'notifications':
-                    // Handle general notifications page - might be HTML or JSON
-                    if (isset($_GET['format']) && $_GET['format'] === 'json') {
-                        handleGetNotificationsDropdown();
-                        return;
-                    } else {
-                        // Let it pass through to the real server for HTML page
-                        break;
-                    }
-                    
-                // APIs that don't exist locally yet - could be implemented later
-                case 'get_user_info':
-                case 'update_user_settings':
-                case 'logout':
-                case 'submit_leave':
-                case 'get_leave_balance':
-                case 'get_leave_history':
-                case 'cancel_leave':
-                case 'approve_leave':
-                case 'reject_leave':
-                case 'get_dashboard_stats':
-                case 'get_calendar_events':
-                case 'get_pending_approvals':
-                    // These APIs would be handled by the real Leave Portal
-                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] API '$page' mapped but not implemented locally - passing to remote server\n", FILE_APPEND);
-                    break; // Let it pass through to remote server
-                    
-                default:
-                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Unknown API endpoint: $page\n", FILE_APPEND);
-                    break; // Let unknown APIs pass through to remote server
-            }
-        }
-
-        // Get Leave Portal credentials and authenticate
-        $credentials = get_platform_credentials($username, 'Leave and Absence');
-        if (!$credentials) {
-
-                http_response_code(401);
-                echo json_encode(['error' => 'No Leave Portal credentials found']);
-                return;
-            
-    }
-
-        $authResult = authenticateToLeavePortal($credentials);
-        if (!$authResult['success']) {
-
-                http_response_code(401);
-                echo json_encode(['error' => 'Leave Portal authentication failed: ' . $authResult['message']]);
-                return;
-            
-    }
-
-        // Build Leave Portal URL
-        $baseUrl = 'https://leave.final.digital';
-        $leavePortalUrl = $baseUrl . '/' . ltrim($page, '/');
-        
-        // Add query parameters from current request
-        $queryParams = $_GET;
-        unset($queryParams['endpoint'], $queryParams['username'], $queryParams['page']);
-        if (!empty($queryParams)) {
-
-                $leavePortalUrl .= (strpos($leavePortalUrl, '?') !== false ? '&' : '?') . http_build_query($queryParams);
-            
-    }
-
-        // Fetch content with authentication
-        $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_LeavePortal.txt';
-        
-        $ch = curl_init($leavePortalUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_ENCODING, ''); // Enable automatic decompression
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language: en-US,en;q=0.5',
-            'Accept-Encoding: gzip, deflate',
-            'Connection: keep-alive'
-        ]);
-
-        if ($method === 'POST') {
-
-                curl_setopt($ch, CURLOPT_POST, true);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($_POST));
-            
-    }
-
-        $content = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-        curl_close($ch);
-
-        if ($httpCode !== 200) {
-
-                http_response_code($httpCode);
-                echo $content;
-                return;
-            
-    }
-
-        // Enhanced URL rewriting for perfect display
-        $proxyBaseUrl = 'http://' . $_SERVER['HTTP_HOST'] . dirname($_SERVER['SCRIPT_NAME']) . '/api.php';
-        
-        // Check if content is HTML before processing
-        if (!$contentType || !preg_match('/text\/html|application\/xhtml/i', $contentType)) {
-            // Not HTML content, pass through directly
-            header('Content-Type: ' . ($contentType ?: 'text/plain'));
-            echo $content;
-            return;
-        }
-
-        // Ensure content is valid UTF-8
-        if (!mb_check_encoding($content, 'UTF-8')) {
-            $content = mb_convert_encoding($content, 'UTF-8', 'auto');
-        }
-        
-        // Debug: Log content start to check DOCTYPE issues
-        $logFile = __DIR__ . '/php_errors.log';
-        $contentStart = substr($content, 0, 500);
-        $contentLength = strlen($content);
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Leave Portal content length: $contentLength, start: " . bin2hex(substr($content, 0, 100)) . "\n", FILE_APPEND);
-        
-        $content = rewriteUrlsForProxy($content, 'leave', $username, $baseUrl, $proxyBaseUrl);
-        
-        // Debug: Log content start after rewriting
-        $contentStartAfter = substr($content, 0, 200);
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] After rewriting: " . $contentStartAfter . "\n", FILE_APPEND);
-        
-        // Inject proxy-aware JavaScript
-        $content = injectProxyJavaScript($content, 'leave', $username, $proxyBaseUrl);
-
-        // Set proper headers
-        header('Content-Type: text/html; charset=UTF-8');
-        echo $content;
-}
 
 
 
@@ -3190,7 +1799,7 @@ function handleDiningMenuToday() {
             ]);
             return;
         }
-
+        
         // Get dining menu for the specified date
         $dining_menu = get_dining_menu_by_date($date);
         
@@ -3223,14 +1832,13 @@ function fetchNotificationsFromPlatform($username, $platform) {
         // Log function entry
         file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] fetchNotificationsFromPlatform called for platform: $platformName, URL: $url", FILE_APPEND);
         
-        $credentials = get_platform_credentials($username, $platformName);
+        $credentials = buildUniversalCredentialsFromRequest($username);
         $notifications = [];
         
         if (!$credentials) {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] No credentials found for user: $username, platform: $platformName", FILE_APPEND);
-                return $notifications;
-            
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] No credentials in request for user: $username, platform: $platformName", FILE_APPEND);
+                // Proceed best-effort without credentials (may rely on existing cookies/session)
+                $credentials = ['platform_username' => $username, 'platform_password' => null];
     }
         
         // Log credentials found
@@ -3243,8 +1851,14 @@ function fetchNotificationsFromPlatform($username, $platform) {
                 file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Using RMS special authentication", FILE_APPEND);
                 return fetchNotificationsFromRMS($credentials, $url);
                 case 'Leave and Absence':
-                    file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Using Leave Portal special authentication", FILE_APPEND);
-                    return fetchNotificationsFromLeavePortal($credentials, $url);
+                    // Do not proxy/fetch Leave Portal notifications; return a direct-open item instead
+                    return [[
+                        'platform' => 'Leave and Absence',
+                        'title' => 'Open Leave Portal Notifications',
+                        'message' => 'Click to view your notifications on the Leave Portal.',
+                        'date' => date('Y-m-d H:i:s'),
+                        'url' => 'https://leave.final.digital/notifications/all_notifications.php'
+                    ]];
 
                 case 'LMS':
                     file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Using LMS special authentication", FILE_APPEND);
@@ -3333,7 +1947,7 @@ function fetchNotificationsFromRMS($credentials, $url) {
 
                                         if ($actionData['username'] === $username && 
                                             $actionData['platform'] === 'RMS') {
-                                            
+
                                             // Check by ID if available, otherwise check by content
                                             $matchesNotification = false;
                                             if (!empty($notificationId) && $actionData['notification_id'] == $notificationId) {
@@ -3364,7 +1978,7 @@ function fetchNotificationsFromRMS($credentials, $url) {
                                                         break;
                                                     
                         }
-                                            }
+                        }
                                             
                     }
                                     
@@ -3375,7 +1989,7 @@ function fetchNotificationsFromRMS($credentials, $url) {
                                     if (!empty($notification['title']) || !empty($notification['message'])) {
                                         $filteredNotifications[] = $notification;
                                     }
-                                }
+                }
                             
             }
                         
@@ -3542,17 +2156,7 @@ function fetchNotificationsFromLeavePortal($credentials, $url) {
  * @param string $url Notifications URL
  * @return array Notifications array
  */
-function fetchNotificationsFromLMS($credentials, $url) {
 
-        $logFile = __DIR__ . '/php_errors.log';
-        
-        // LMS notifications are handled by sub-platforms
-        // This function is called for the main LMS platform, but notifications come from sub-platforms
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS notifications: using sub-platform notifications", FILE_APPEND);
-        
-        // Return empty array for main LMS platform - notifications come from sub-platforms
-        return [];
-}
 
 /**
  * Fetch notifications from generic platforms
@@ -3978,7 +2582,7 @@ function parseNotificationsFromResponse($response, $platformName, $url) {
                                 file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Skipped #$index: UI element '$element'", FILE_APPEND);
                                 continue 2; // Skip to next notification
                             }
-                        }
+            }
                         // Skip if message is only numbers, whitespace, or punctuation (but allow meaningful text with punctuation)
                         if (preg_match('/^[\d\s\W]*$/', $msg) && !preg_match('/[a-zA-Z]/', $msg)) {
 
@@ -4332,7 +2936,7 @@ function handleMarkNotificationRead() {
         
         // Forward to the real Leave Portal
         $username = isset($_GET['username']) ? $_GET['username'] : '';
-        $credentials = get_platform_credentials($username, 'Leave and Absence');
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if ($credentials) {
             $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_LeavePortal.txt';
             $realPortalUrl = 'https://leave.final.digital/notifications/mark_notification_read.php';
@@ -4428,7 +3032,7 @@ function handleGetNotificationCount() {
     }
         
         // Forward to the real Leave Portal for actual notification count
-        $credentials = get_platform_credentials($username, 'Leave and Absence');
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if ($credentials) {
             $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_LeavePortal.txt';
             $realPortalUrl = 'https://leave.final.digital/notifications/get_notification_count.php';
@@ -4563,7 +3167,7 @@ function handleToggleNotificationRead() {
         
         // For Leave Portal notifications, forward to the real server
         // Since this is coming from the Leave Portal proxy, forward it to the real Leave Portal
-        $credentials = get_platform_credentials($username, 'Leave and Absence');
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if ($credentials) {
             $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_LeavePortal.txt';
             $realPortalUrl = 'https://leave.final.digital/notifications/toggle_notification_read.php';
@@ -4692,7 +3296,7 @@ function handleToggleAllNotificationsRead() {
         
         // For Leave Portal notifications, forward to the real server
         // Since this is coming from the Leave Portal proxy, forward it to the real Leave Portal
-        $credentials = get_platform_credentials($username, 'Leave and Absence');
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if ($credentials) {
             $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_LeavePortal.txt';
             $realPortalUrl = 'https://leave.final.digital/notifications/toggle_all_notifications_read.php';
@@ -4804,7 +3408,7 @@ function handleClearOldNotifications() {
     }
         
         // Forward to the real Leave Portal (but this endpoint returns 404 on real server)
-        $credentials = get_platform_credentials($username, 'Leave and Absence');
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if ($credentials) {
             $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_LeavePortal.txt';
             $realPortalUrl = 'https://leave.final.digital/notifications/clear_old_notifications.php';
@@ -4928,7 +3532,7 @@ function handleDeleteNotification() {
         
         // Forward to the real Leave Portal first
         $username = isset($_GET['username']) ? $_GET['username'] : '';
-        $credentials = get_platform_credentials($username, 'Leave and Absence');
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if ($credentials) {
             $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_LeavePortal.txt';
             
@@ -5126,7 +3730,7 @@ function performLeavePortalNotificationAction($notificationId, $action, $readSta
             
     }
         
-        $credentials = get_platform_credentials($username, 'Leave and Absence');
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if (!$credentials) {
 
                 return ['success' => false, 'message' => 'No credentials found for Leave Portal'];
@@ -5442,403 +4046,13 @@ function performRMSNotificationAction($notificationId, $action, $readStatus = nu
 
 
 
-function handleLmsFontProxy() {
 
-        global $method, $lms_subplatforms;
-
-        $subplatformName = isset($_GET['subplatform']) ? $_GET['subplatform'] : '';
-        $username = isset($_GET['username']) ? $_GET['username'] : '';
-        $fontPath = isset($_GET['fontpath']) ? $_GET['fontpath'] : '';
-
-        if (!$subplatformName || !$username || !$fontPath) {
-
-                http_response_code(400);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Sub-platform name, username, and fontpath are required',
-                    'message' => 'You must provide a sub-platform name, username, and fontpath.'
-                ]);
-                return;
-            
-    }
-
-        $targetSubplatform = null;
-        foreach ($lms_subplatforms as $subplatform) {
-
-                if ($subplatform['name'] === $subplatformName) {
-
-                        $targetSubplatform = $subplatform;
-                        break;
-                    
-        }
-            
-    }
-        if (!$targetSubplatform) {
-
-                http_response_code(404);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Sub-platform not found',
-                    'message' => 'The specified sub-platform does not exist.'
-                ]);
-                return;
-            
-    }
-
-        $baseUrl = rtrim($targetSubplatform['url'], '/');
-        
-        // Debug logging - Remove after testing
-        $originalFontPath = $fontPath;
-        
-        // Remove leading LMS/ from fontPath if baseUrl already ends with /LMS  
-        if (substr($baseUrl, -4) === '/LMS' && strpos($fontPath, 'LMS/') === 0) {
-
-                $fontPath = substr($fontPath, 4);
-        // Remove 'LMS/' from the beginning
-                error_log("LMS Font URL Fix: '$originalFontPath' -> '$fontPath' for baseUrl: '$baseUrl'");
-            
-    }
-        
-        $targetUrl = (strpos($fontPath, 'http') === 0) ? $fontPath : $baseUrl . '/' . ltrim($fontPath, '/');
-        $host = parse_url($baseUrl, PHP_URL_HOST);
-        $cookieFile = __DIR__ . '/../cookies/' . $username . '_' . $host . '.txt';
-        
-        // IMPROVED: Better error handling for missing session
-        if (!file_exists($cookieFile)) {
-
-                // Try to authenticate first
-                $credentials = get_platform_credentials($username, 'LMS');
-                if ($credentials) {
-
-                        $logFile = __DIR__ . '/php_errors.log';
-                        $authResult = authenticateToLmsSubplatformInternal($username, $subplatformName, $targetSubplatform, $credentials, $logFile, $cookieFile);
-                        if (!$authResult['success']) {
-
-                                http_response_code(401);
-                    /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                                echo json_encode([
-                                    'error' => 'Failed to authenticate for font request',
-                                    'message' => 'Failed to authenticate for font request.'
-                                ]);
-                                return;
-                            
-            }
-                    
-        }
-        else {
-
-                    http_response_code(401);
-                /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                    echo json_encode([
-                        'error' => 'No session cookie for LMS sub-platform',
-                        'message' => 'No session cookie for LMS sub-platform.'
-                    ]);
-                    return;
-                    
-        }
-            
-    }
-
-        $ch = curl_init($targetUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_HEADER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $response = curl_exec($ch);
-        $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        if ($curlError) {
-
-                http_response_code(500);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'cURL Error: ' . $curlError,
-                    'message' => 'An error occurred while fetching the font.'
-                ]);
-                return;
-            
-    }
-
-        $headers = substr($response, 0, $header_size);
-        $body = substr($response, $header_size);
-
-        // IMPROVED: Better error handling for missing fonts
-        if ($httpCode !== 200) {
-
-                // Try alternative font paths for common font files
-                if (strpos($fontPath, 'fontawesome') !== false) {
-
-                        $alternativePaths = [
-                            '/theme/fonts/fontawesome-webfont.woff2',
-                            '/lib/fonts/fontawesome-webfont.woff2',
-                            '/theme/boost/fonts/fontawesome-webfont.woff2',
-                            '/theme/font.php/boost/core/fontawesome-webfont.woff2'
-                        ];
-                        
-                        foreach ($alternativePaths as $altPath) {
-
-                                $altUrl = $baseUrl . $altPath;
-                                $ch = curl_init($altUrl);
-                                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                                curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-                                curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-                                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                                curl_setopt($ch, CURLOPT_HEADER, true);
-                                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-                                
-                    /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-                                $altResponse = curl_exec($ch);
-                                $altHeaderSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-                                $altHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                                curl_close($ch);
-                                
-                                if ($altHttpCode === 200) {
-
-                                        // Found alternative font, serve it
-                                        $altBody = substr($altResponse, $altHeaderSize);
-                                        $altHeaders = substr($altResponse, 0, $altHeaderSize);
-                                        
-                                        // Extract content type from headers
-                                        $contentType = 'application/octet-stream';
-                                        if (preg_match('/^Content-Type:\s*([^\r\n]+)/mi', $altHeaders, $matches)) {
-
-                                                $contentType = trim($matches[1]);
-                                            
-                    }
-                                        
-                                        header('Content-Type: ' . $contentType);
-                                        header('Access-Control-Allow-Origin: *');
-                                        header('Cache-Control: public, max-age=86400');
-                                        http_response_code(200);
-                                        echo $altBody;
-                                        return;
-                                    
-                }
-                            
-            }
-                    
-        }
-                
-                http_response_code($httpCode);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Font not found (HTTP ' . $httpCode . ')',
-                    'message' => 'The requested font could not be found.'
-                ]);
-                return;
-            
-    }
-
-        if (preg_match('/^Content-Type:\s*([^\r\n]+)/mi', $headers, $matches)) {
-
-                $contentType = trim($matches[1]);
-                // If the content type indicates HTML instead of a font, it might be an error page
-                if (strpos($contentType, 'text/html') !== false) {
-
-                        // This is likely an error page, try to get the actual font
-                        $actualFontUrl = $baseUrl . '/theme/font.php/boost/core/' . basename($fontPath);
-                        $ch = curl_init($actualFontUrl);
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-                        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                        curl_setopt($ch, CURLOPT_HEADER, true);
-                        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-                        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-                        
-                /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-                        $fontResponse = curl_exec($ch);
-                        $fontHeaderSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-                        $fontHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                        curl_close($ch);
-                        
-                        if ($fontHttpCode === 200) {
-
-                                $fontHeaders = substr($fontResponse, 0, $fontHeaderSize);
-                                $fontBody = substr($fontResponse, $fontHeaderSize);
-                                
-                                if (preg_match('/^Content-Type:\s*([^\r\n]+)/mi', $fontHeaders, $fontMatches)) {
-
-                                        header('Content-Type: ' . trim($fontMatches[1]));
-                                    
-                }
-                else {
-
-                                        header('Content-Type: application/octet-stream');
-                                    
-                }
-                                header('Access-Control-Allow-Origin: *');
-                                http_response_code(200);
-                                echo $fontBody;
-                                return;
-                            
-            }
-                    
-        }
-                header('Content-Type: ' . $contentType);
-            
-    }
-    else {
-
-                header('Content-Type: application/octet-stream');
-            
-    }
-        header('Access-Control-Allow-Origin: *');
-        http_response_code($httpCode);
-        echo $body;
-}
 
 /**
  * Proxy image requests to LMS sub-platforms (e.g., theme/image.php)
  * Usage: /database/api.php?endpoint=lms_image_proxy&subplatform=...&username=...&imagepath=...
  */
-function handleLmsImageProxy() {
-    global $method, $lms_subplatforms;
 
-    $subplatformName = isset($_GET['subplatform']) ? $_GET['subplatform'] : '';
-    $username = isset($_GET['username']) ? $_GET['username'] : '';
-    $imagePath = isset($_GET['imagepath']) ? $_GET['imagepath'] : '';
-
-    if (!$subplatformName || !$username || !$imagePath) {
-        http_response_code(400);
-        /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-        echo json_encode([
-            'error' => 'Sub-platform name, username, and imagepath are required',
-            'message' => 'You must provide a sub-platform name, username, and imagepath.'
-        ]);
-        return;
-    }
-
-    $targetSubplatform = null;
-    foreach ($lms_subplatforms as $subplatform) {
-        if ($subplatform['name'] === $subplatformName) {
-            $targetSubplatform = $subplatform;
-            break;
-        }
-    }
-    if (!$targetSubplatform) {
-        http_response_code(404);
-        /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-        echo json_encode([
-            'error' => 'Sub-platform not found',
-            'message' => 'The specified sub-platform does not exist.'
-        ]);
-        return;
-    }
-
-    $baseUrl = rtrim($targetSubplatform['url'], '/');
-    
-    // Debug logging - Remove after testing
-    $originalImagePath = $imagePath;
-    
-    // Remove leading LMS/ from imagePath if baseUrl already ends with /LMS  
-    if (substr($baseUrl, -4) === '/LMS' && strpos($imagePath, 'LMS/') === 0) {
-        $imagePath = substr($imagePath, 4); // Remove 'LMS/' from the beginning
-        error_log("LMS Image URL Fix: '$originalImagePath' -> '$imagePath' for baseUrl: '$baseUrl'");
-    }
-    
-    $targetUrl = (strpos($imagePath, 'http') === 0) ? $imagePath : $baseUrl . '/' . ltrim($imagePath, '/');
-    $host = parse_url($baseUrl, PHP_URL_HOST);
-    $cookieFile = __DIR__ . '/../cookies/' . $username . '_' . $host . '.txt';
-    
-    // IMPROVED: Better error handling for missing session
-    if (!file_exists($cookieFile)) {
-        // Try to authenticate first
-        $credentials = get_platform_credentials($username, 'LMS');
-        if ($credentials) {
-            $logFile = __DIR__ . '/php_errors.log';
-            $authResult = authenticateToLmsSubplatformInternal($username, $subplatformName, $targetSubplatform, $credentials, $logFile, $cookieFile);
-            if (!$authResult['success']) {
-                http_response_code(401);
-                /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Failed to authenticate for image request',
-                    'message' => 'Failed to authenticate for image request.'
-                ]);
-                return;
-            }
-        } else {
-            http_response_code(401);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-            echo json_encode([
-                'error' => 'No session cookie for LMS sub-platform',
-                'message' => 'No session cookie for LMS sub-platform.'
-            ]);
-            return;
-        }
-    }
-
-    $ch = curl_init($targetUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-    curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    curl_setopt($ch, CURLOPT_HEADER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-
-    /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-    $response = curl_exec($ch);
-    $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlError = curl_error($ch);
-    curl_close($ch);
-
-    if ($curlError) {
-        http_response_code(500);
-        /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-        echo json_encode([
-            'error' => 'cURL Error: ' . $curlError,
-            'message' => 'An error occurred while fetching the image.'
-        ]);
-        return;
-    }
-
-    $headers = substr($response, 0, $header_size);
-    $body = substr($response, $header_size);
-
-    if ($httpCode !== 200) {
-        http_response_code($httpCode);
-        /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-        echo json_encode([
-            'error' => 'Image not found (HTTP ' . $httpCode . ')',
-            'message' => 'The requested image could not be found.'
-        ]);
-        return;
-    }
-
-    // Extract and set content type
-    if (preg_match('/^Content-Type:\s*([^\r\n]+)/mi', $headers, $matches)) {
-        $contentType = trim($matches[1]);
-        header('Content-Type: ' . $contentType);
-    } else {
-        // Default to SVG for Moodle image.php requests
-        header('Content-Type: image/svg+xml');
-    }
-    
-    // Set appropriate caching headers for images
-    header('Access-Control-Allow-Origin: *');
-    header('Cache-Control: public, max-age=86400');
-    http_response_code($httpCode);
-    echo $body;
-}
 
 
 
@@ -5847,277 +4061,7 @@ function handleLmsImageProxy() {
  * Usage: /database/api.php?endpoint=lms_ajax_proxy&subplatform=...&username=...&apipath=...
  * Forwards the request to the real LMS server using the user's session cookie
  */
-function handleLmsAjaxProxy() {
 
-        global $method, $lms_subplatforms;
-
-        $subplatformName = isset($_GET['subplatform']) ? $_GET['subplatform'] : '';
-        $username = isset($_GET['username']) ? $_GET['username'] : '';
-        $apiPath = isset($_GET['apipath']) ? $_GET['apipath'] : '';
-        $sesskey = isset($_GET['sesskey']) ? $_GET['sesskey'] : '';
-
-        // Debug logging
-        $logFile = __DIR__ . '/php_errors.log';
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] AJAX Proxy - sesskey: '$sesskey', apiPath: '$apiPath'\n", FILE_APPEND);
-
-        if (!$subplatformName || !$username || !$apiPath) {
-
-                http_response_code(400);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Sub-platform name, username, and apipath are required',
-                    'message' => 'You must provide a sub-platform name, username, and API path.'
-                ]);
-                return;
-            
-    }
-
-        // Find the sub-platform configuration
-        $targetSubplatform = null;
-        foreach ($lms_subplatforms as $subplatform) {
-
-                if ($subplatform['name'] === $subplatformName) {
-
-                        $targetSubplatform = $subplatform;
-                        break;
-                    
-        }
-            
-    }
-        if (!$targetSubplatform) {
-
-                http_response_code(404);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Sub-platform not found',
-                    'message' => 'The specified sub-platform does not exist.'
-                ]);
-                return;
-            
-    }
-
-        $baseUrl = rtrim($targetSubplatform['url'], '/');
-        
-        // Debug logging - Remove after testing
-        $originalApiPath = $apiPath;
-        
-        // Remove leading LMS/ from apiPath if baseUrl already ends with /LMS
-        if (substr($baseUrl, -4) === '/LMS' && strpos($apiPath, 'LMS/') === 0) {
-
-                $apiPath = substr($apiPath, 4);
-        // Remove 'LMS/' from the beginning
-                error_log("LMS Ajax URL Fix: '$originalApiPath' -> '$apiPath' for baseUrl: '$baseUrl'");
-            
-    }
-        
-        $targetUrl = $baseUrl . '/' . ltrim($apiPath, '/');
-        
-        // Add sesskey to URL for Moodle AJAX requests if provided
-        if ($sesskey) {
-            $separator = (strpos($targetUrl, '?') !== false) ? '&' : '?';
-            $targetUrl .= $separator . 'sesskey=' . urlencode($sesskey);
-        }
-
-        // Debug: Log the exact URL and method
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] AJAX Target URL: $targetUrl\n", FILE_APPEND);
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Request method: $method\n", FILE_APPEND);
-        $host = parse_url($baseUrl, PHP_URL_HOST);
-        $cookieFile = __DIR__ . '/../cookies/' . $username . '_' . $host . '.txt';
-        if (!file_exists($cookieFile)) {
-
-                http_response_code(401);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'No session cookie for LMS sub-platform',
-                    'message' => 'No session cookie for LMS sub-platform.'
-                ]);
-                return;
-            
-    }
-
-        $ch = curl_init($targetUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_HEADER, true);
-    // To capture headers
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-
-        // IMPROVED: Forward method and body for POST requests with proper handling
-        if ($method === 'POST') {
-                curl_setopt($ch, CURLOPT_POST, true);
-                
-                // Get POST data
-            /* PARSED INPUT: Reads raw request body (usually JSON). Validate before using. */
-                $postData = file_get_contents('php://input');
-                
-                // Handle sesskey for Moodle AJAX requests
-                if ($sesskey && !empty($postData)) {
-                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Adding sesskey '$sesskey' to POST data\n", FILE_APPEND);
-                    // For JSON requests, decode, add sesskey, and re-encode
-                    $decodedData = json_decode($postData, true);
-                    if ($decodedData && is_array($decodedData)) {
-                        // Add sesskey to each request in the array
-                        foreach ($decodedData as &$request) {
-                            if (isset($request['args'])) {
-                                $request['args']['sesskey'] = $sesskey;
-                            }
-                        }
-                        $postData = json_encode($decodedData);
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Modified POST data: " . substr($postData, 0, 200) . "\n", FILE_APPEND);
-                    }
-                }
-                
-                // Handle file uploads if present
-                if (!empty($_FILES)) {
-
-                        $postData = $_POST;
-                        foreach ($_FILES as $fieldName => $fileInfo) {
-
-                                if ($fileInfo['error'] === UPLOAD_ERR_OK) {
-
-                                        $postData[$fieldName] = new CURLFile($fileInfo['tmp_name'], $fileInfo['type'], $fileInfo['name']);
-                                    
-                }
-                            
-            }
-                    
-        }
-                
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-                
-                // Forward content-type with proper handling
-                $contentType = isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : 'application/x-www-form-urlencoded';
-                $headers = [
-                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Content-Type: ' . $contentType,
-                    'X-Requested-With: XMLHttpRequest'
-                ];
-                curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-            
-    }
-    else {
-
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'X-Requested-With: XMLHttpRequest'
-                ]);
-            
-    }
-
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] AJAX: About to execute CURL to: $targetUrl\n", FILE_APPEND);
-        if ($method === 'POST') {
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] AJAX: POST data being sent: " . substr($postData, 0, 300) . "\n", FILE_APPEND);
-        }
-        $response = curl_exec($ch);
-        $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-        $headers = substr($response, 0, $header_size);
-        $body = substr($response, $header_size);
-        curl_close($ch);
-
-        // Special handling for YUI combo loader failures
-        if (strpos($apiPath, 'yui_combo.php') !== false && $httpCode !== 200) {
-
-                // Force re-authentication and retry
-                @unlink($cookieFile);
-                // Assign credentials before using
-                $credentials = get_platform_credentials($username, 'LMS');
-                $logFile = __DIR__ . '/php_errors.log';
-                $authResult = authenticateToLmsSubplatformInternal($username, $subplatformName, $targetSubplatform, $credentials, $logFile, $cookieFile);
-                if ($authResult['success']) {
-
-                        // Retry the request with new authentication
-                        $ch = curl_init($targetUrl);
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                        curl_setopt($ch, CURLOPT_HEADER, true);
-                        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-                        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-                        curl_setopt($ch, CURLOPT_COOKIESESSION, false);
-                        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-                        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-                        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-                        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                            'Referer: ' . $baseUrl . '/',
-                            'X-Requested-With: XMLHttpRequest'
-                        ]);
-                /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-                        $response = curl_exec($ch);
-                        $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-                        $headers = substr($response, 0, $header_size);
-                        $body = substr($response, $header_size);
-                        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                        $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-                        $curlError = curl_error($ch);
-                        curl_close($ch);
-                        // Optionally log the retry attempt
-                        $logMsg = "[" . date('Y-m-d H:i:s') . "] [YUI Combo Retry] Retried after re-auth for $targetUrl, HTTP $httpCode\n";
-                        file_put_contents($logFile, $logMsg, FILE_APPEND);
-                    
-        }
-            
-    }
-
-        // --- BEGIN DEBUG LOGGING ---
-        $logFile = __DIR__ . '/php_errors.log';
-        $logMsg = "[" . date('Y-m-d H:i:s') . "] [LmsAjaxProxy]\n";
-        $logMsg .= "Target URL: $targetUrl\n";
-        $logMsg .= "HTTP Code: $httpCode\n";
-        $logMsg .= "Effective URL: $effectiveUrl\n";
-        $logMsg .= "cURL Error: $curlError\n";
-        $logMsg .= "Response Headers: " . substr($headers, 0, 500) . "\n";
-        if ($httpCode !== 200) {
-
-                $logMsg .= "Response Body (snippet): " . substr($body, 0, 500) . "\n";
-            
-    }
-        file_put_contents($logFile, $logMsg, FILE_APPEND);
-        // --- END DEBUG LOGGING ---
-
-        if ($curlError) {
-
-                http_response_code(500);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'cURL Error',
-                    'message' => 'An error occurred while processing the AJAX request.',
-                    'details' => $curlError
-                ]);
-                return;
-            
-    }
-
-        // Split headers and body
-        $headers = substr($response, 0, $header_size);
-        $body = substr($response, $header_size);
-
-        // Forward relevant headers (content-type, etc.)
-        if (preg_match('/^Content-Type:\\s*([^\r\n]+)/mi', $headers, $matches)) {
-
-                header('Content-Type: ' . trim($matches[1]));
-            
-    }
-    else {
-
-                header('Content-Type: application/json');
-            
-    }
-        // Allow CORS from localhost
-        header('Access-Control-Allow-Origin: http://localhost');
-        header('Access-Control-Allow-Credentials: true');
-        header('Access-Control-Allow-Headers: Content-Type, X-Requested-With');
-
-        http_response_code($httpCode);
-        echo $body;
-}
 
 /**
  * Fetch notifications from an external platform (used for cross-system notification integration)
@@ -6190,7 +4134,7 @@ function handleFetchExternalNotifications() {
                 // For RMS, SIS, LMS: authenticate if needed
                 if ($platform === 'RMS' || $platform === 'SIS' || $platform === 'LMS') {
 
-                    $credentials = get_platform_credentials($username, $platform);
+                    $credentials = buildUniversalCredentialsFromRequest($username);
                     if ($credentials) {
 
                                 if ($platform === 'RMS') {
@@ -6416,7 +4360,7 @@ function handleAuthenticatePlatform() {
         if ($platformName === 'SIS') {
 
                 // Get SIS credentials for the user
-                $credentials = get_platform_credentials($username, 'SIS');
+                $credentials = buildUniversalCredentialsFromRequest($username);
                 if (!$credentials) {
 
                         http_response_code(401);
@@ -6481,7 +4425,7 @@ function handleAuthenticatePlatform() {
     else if ($platformName === 'RMS') {
 
                 // Handle RMS authentication
-                $credentials = get_platform_credentials($username, 'RMS');
+                $credentials = buildUniversalCredentialsFromRequest($username);
                 if (!$credentials) {
 
                         http_response_code(401);
@@ -6844,7 +4788,7 @@ function handleLmsSubplatformAuth() {
         file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] LMS Sub-platform Authentication attempt for: $subplatformName, user: $username\n", FILE_APPEND);
 
         // Get user credentials - use "LMS" as the platform name since that's how credentials are stored
-        $credentials = get_platform_credentials($username, 'LMS');
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if (!$credentials) {
 
                 file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] No LMS credentials found for user: $username\n", FILE_APPEND);
@@ -7159,393 +5103,13 @@ function handleLmsSubplatformAuth() {
 /**
  * Parse notifications from HTML response for LMS sub-platforms
  */
-function parseLmsSubplatformNotificationsFromHtml($html, $subplatformName, $username = null) {
 
-        $notifications = [];
-        $logFile = __DIR__ . '/php_errors.log';
-        $proxyBase = 'http://localhost/LEAVE_RMS/database/api.php?endpoint=lms_subplatform_proxy';
-        $proxiedNotifPath = 'message/output/popup/notifications.php';
-        
-        // Skip if we detect login-related content (not authenticated)
-        if (strpos($html, 'You are not logged in') !== false || 
-            (strpos($html, 'login') !== false && strpos($html, 'username') !== false && strpos($html, 'password') !== false && strpos($html, 'form') !== false) ||
-            strpos($html, 'Please log in') !== false ||
-            strpos($html, 'Authentication required') !== false ||
-            strpos($html, 'Invalid login') !== false ||
-            strpos($html, 'Login failed') !== false) {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Skipping notifications for $subplatformName - login required", FILE_APPEND);
-                return $notifications;
-            
-    }
-        
-        // Look for UNREAD notification indicators specifically
-        // Common patterns for unread notifications in LMS systems
-        $unreadPatterns = [
-            // Unread badge indicators
-            '/<span[^>]*class[^>]*unread[^>]*>(.*?)<\/span>/is',
-            '/<div[^>]*class[^>]*unread[^>]*>(.*?)<\/div>/is',
-            '/<span[^>]*class[^>]*badge[^>]*>(.*?)<\/span>/is',
-            '/<div[^>]*class[^>]*badge[^>]*>(.*?)<\/div>/is',
-            
-            // Notification items with unread indicators
-            '/<div[^>]*class[^>]*notification-item[^>]*unread[^>]*>(.*?)<\/div>/is',
-            '/<li[^>]*class[^>]*unread[^>]*>(.*?)<\/li>/is',
-            '/<tr[^>]*class[^>]*unread[^>]*>(.*?)<\/tr>/is',
-            
-            // Messages with unread status
-            '/<div[^>]*class[^>]*message[^>]*unread[^>]*>(.*?)<\/div>/is',
-            '/<div[^>]*class[^>]*popup[^>]*unread[^>]*>(.*?)<\/div>/is',
-            
-            // Items with "new" or "unread" text
-            '/<div[^>]*class[^>]*[^>]*>(.*?(?:new|unread|unread.*?|.*?unread).*?)<\/div>/is',
-            '/<span[^>]*class[^>]*[^>]*>(.*?(?:new|unread|unread.*?|.*?unread).*?)<\/span>/is',
-            '/<li[^>]*class[^>]*[^>]*>(.*?(?:new|unread|unread.*?|.*?unread).*?)<\/li>/is',
-            
-            // FontAwesome or icon indicators for unread
-            '/<i[^>]*class[^>]*(?:fa|fas|far|fab)[^>]*unread[^>]*>(.*?)<\/i>/is',
-            '/<i[^>]*class[^>]*(?:fa|fas|far|fab)[^>]*[^>]*>(.*?)<\/i>/is',
-            
-            // Items with data attributes indicating unread status
-            '/<div[^>]*data-unread[^>]*>(.*?)<\/div>/is',
-            '/<span[^>]*data-unread[^>]*>(.*?)<\/span>/is',
-            '/<li[^>]*data-unread[^>]*>(.*?)<\/li>/is'
-        ];
-        
-        foreach ($unreadPatterns as $pattern) {
-
-            /* PREG MATCHES: Used to extract scripts/event handlers from HTML responses. Ensure patterns are correct and safe. */
-                if (preg_match_all($pattern, $html, $matches)) {
-
-                    foreach ($matches[1] as $match) {
-
-                                $content = strip_tags($match);
-                                if (!empty($content) && strlen($content) > 3 && 
-                                    strpos($content, 'You are not logged in') === false &&
-                                    strpos($content, 'login') === false &&
-                    /* INCLUDE/REQUIRE: Verify that included paths are not user-controlled to avoid remote code execution. */
-                                    // Only include if it contains unread indicators
-                                    (strpos($content, 'unread') !== false || 
-                                     strpos($content, 'new') !== false ||
-                                     strpos($content, 'unread') !== false ||
-                                     is_numeric($content))) {
-                    // Numeric content might be unread count
-                                        
-                                $notifications[] = [
-                                            'title' => 'Unread LMS Notification',
-                                            'message' => $content,
-                                            'platform' => $subplatformName,
-                                            'timestamp' => date('Y-m-d H:i:s'),
-                                            'url' => $username ? $proxyBase . '&subplatform=' . urlencode($subplatformName) . '&username=' . urlencode($username) . '&path=' . urlencode($proxiedNotifPath) : null
-                                        ];
-                                    
-                }
-                            
-            }
-                    
-        }
-            
-    }
-        
-        // Look for notification counts (usually indicate unread notifications)
-        /* PREG MATCHES: Used to extract scripts/event handlers from HTML responses. Ensure patterns are correct and safe. */
-        if (preg_match_all('/<span[^>]*class[^>]*notification-count[^>]*>(.*?)<\/span>/is', $html, $matches)) {
-
-                foreach ($matches[1] as $match) {
-
-                        $content = strip_tags($match);
-                        if (!empty($content) && is_numeric($content) && intval($content) > 0) {
-
-                                $notifications[] = [
-                                    'title' => 'Unread Notification Count',
-                                    'message' => "You have $content unread notifications",
-                                'platform' => $subplatformName,
-                                'timestamp' => date('Y-m-d H:i:s')
-                            ];
-                            
-            }
-                    
-        }
-            
-    }
-        
-        // Look for specific unread message indicators
-        /* PREG MATCHES: Used to extract scripts/event handlers from HTML responses. Ensure patterns are correct and safe. */
-        if (preg_match_all('/<div[^>]*class[^>]*message[^>]*>(.*?)<\/div>/is', $html, $matches)) {
-
-                foreach ($matches[1] as $match) {
-
-                        $content = strip_tags($match);
-                        if (!empty($content) && strlen($content) > 5 && 
-                            strpos($content, 'You are not logged in') === false &&
-                            strpos($content, 'login') === false &&
-                            (strpos($content, 'unread') !== false || 
-                             strpos($content, 'new message') !== false ||
-                             strpos($content, 'unread message') !== false)) {
-
-                                $notifications[] = [
-                                    'title' => 'Unread LMS Message',
-                                    'message' => $content,
-                                    'platform' => $subplatformName,
-                                    'timestamp' => date('Y-m-d H:i:s')
-                                ];
-                            
-            }
-                    
-        }
-            
-    }
-        
-        // Fallback: If no notifications found with specific patterns, try to capture any meaningful content
-        if (empty($notifications)) {
-
-                // Look for any content that might be a notification (fallback)
-                $cleanedHtml = strip_tags($html);
-                $lines = explode("\n", $cleanedHtml);
-                foreach ($lines as $line) {
-
-                        $line = trim($line);
-                        if (strlen($line) > 10 && strlen($line) < 500 && 
-                            strpos($line, 'You are not logged in') === false &&
-                            strpos($line, 'login') === false &&
-                            strpos($line, 'username') === false &&
-                            strpos($line, 'password') === false &&
-                            (strpos($line, 'notification') !== false || 
-                             strpos($line, 'message') !== false ||
-                             strpos($line, 'announcement') !== false ||
-                             strpos($line, 'alert') !== false)) {
-
-                                $notifications[] = [
-                                    'title' => 'LMS Content',
-                                    'message' => $line,
-                                    'platform' => $subplatformName,
-                                    'timestamp' => date('Y-m-d H:i:s')
-                                ];
-                            
-            }
-                    
-        }
-            
-    }
-        
-        // Log if no real notifications were found
-        if (empty($notifications)) {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] No real notifications found for LMS sub-platform: $subplatformName", FILE_APPEND);
-            
-    }
-    else {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Found " . count($notifications) . " unread notifications for LMS sub-platform: $subplatformName", FILE_APPEND);
-            
-    }
-        
-        return $notifications;
-}
 /**
  * IMPROVED: Fetch notifications from all LMS sub-platforms for a user
  * @param string $username - Username to fetch notifications for
  * @return array - Array of notifications from all LMS sub-platforms
  */
-function fetchAllLmsSubplatformNotifications($username) {
 
-        global $lms_subplatforms;
-        
-        $logFile = __DIR__ . '/php_errors.log';
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] fetchAllLmsSubplatformNotifications called for user: $username", FILE_APPEND);
-        
-        $allNotifications = [];
-        $credentials = get_platform_credentials($username, 'LMS');
-        
-        if (!$credentials) {
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] No LMS credentials found for user: $username", FILE_APPEND);
-                return $allNotifications;
-            
-    }
-        
-        // Process each LMS sub-platform
-        foreach ($lms_subplatforms as $subplatform) {
-
-                $subplatformName = $subplatform['name'];
-                $baseUrl = rtrim($subplatform['url'], '/');
-                $notificationsUrl = $baseUrl . '/' . ltrim($subplatform['notifications_endpoint'], '/');
-                
-                // Use consistent cookie file path
-                $host = parse_url($baseUrl, PHP_URL_HOST);
-                $cookieFile = __DIR__ . '/../cookies/' . $username . '_' . $host . '.txt';
-                
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Fetching notifications from LMS sub-platform: $subplatformName", FILE_APPEND);
-
-                // Step 1: Check if we need to authenticate
-                $needsAuth = false;
-                
-                // Check if cookie file exists and is recent (less than 20 minutes old)
-                if (!file_exists($cookieFile) || (time() - filemtime($cookieFile)) > 1200) {
-
-                        $needsAuth = true;
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Cookie file missing or expired for $subplatformName, need to authenticate", FILE_APPEND);
-                    
-        }
-        else {
-
-                        // Try to access notifications page with existing cookie
-                    $ch = curl_init($notificationsUrl);
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                    curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-                    curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-                    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                        'Accept: application/json, text/html, */*',
-                        'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                    ]);
-                /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-                    $response = curl_exec($ch);
-                        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                    curl_close($ch);
-
-                        // Check if we got redirected to login or got a login form
-                        // Be more specific to avoid false positives
-                        $isLoginRedirect = ($httpCode == 302 || $httpCode == 301);
-                        $hasLoginForm = (strpos($response, '<form') !== false && 
-                                       strpos($response, 'name="username"') !== false && 
-                                       strpos($response, 'name="password"') !== false &&
-                                       strpos($response, 'type="password"') !== false);
-                        $hasNotLoggedInMessage = (strpos($response, 'You are not logged in') !== false ||
-                                                strpos($response, 'Please log in') !== false ||
-                                                strpos($response, 'Login required') !== false);
-                        
-                        if ($isLoginRedirect || $hasLoginForm || $hasNotLoggedInMessage) {
-                                $needsAuth = true;
-                                $logFile = __DIR__ . '/php_errors.log';
-                                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Authentication required for $subplatformName (redirect: $isLoginRedirect, form: $hasLoginForm, message: $hasNotLoggedInMessage)", FILE_APPEND);
-                            
-            }
-                    
-        }
-
-                // Step 2: Authenticate if needed
-                if ($needsAuth) {
-
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Authenticating to $subplatformName", FILE_APPEND);
-                        $authResult = authenticateToLmsSubplatformInternal($username, $subplatformName, $subplatform, $credentials, $logFile, $cookieFile);
-                        
-                        if (!$authResult['success']) {
-
-                                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Authentication failed for $subplatformName: " . ($authResult['error'] ?? 'Unknown error'), FILE_APPEND);
-                                continue;
-                // Skip this subplatform if authentication failed
-                            
-            }
-                        
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Authentication successful for $subplatformName", FILE_APPEND);
-                        
-                        // Use the dashboard response from authentication if available
-                        $dashboardResponse = $authResult['dashboardResponse'] ?? null;
-                    
-        }
-
-                // Step 3: Fetch notifications with proper authentication
-                // Use the dashboard response from Step 2.5 if we just authenticated
-                if ($needsAuth) {
-
-                        // We already have the dashboard response from the authentication step
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Using dashboard response from authentication for $subplatformName", FILE_APPEND);
-                    
-        }
-        else {
-
-                        // If we didn't need to authenticate, fetch dashboard now
-                        $dashboardUrl = $baseUrl . '/my/';
-                        $ch = curl_init($dashboardUrl);
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-                        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-                        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-                        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                            'Accept: application/json, text/html, */*',
-                            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                        ]);
-                        
-                /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-                        $dashboardResponse = curl_exec($ch);
-                        $dashboardHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                        curl_close($ch);
-                        
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Dashboard response HTTP Code for $subplatformName: $dashboardHttpCode", FILE_APPEND);
-                    
-        }
-                
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Dashboard response preview for $subplatformName: " . substr($dashboardResponse, 0, 500), FILE_APPEND);
-                
-                // Now try the notifications endpoint with the established session
-                    $ch = curl_init($notificationsUrl);
-                    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                    curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-                    curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                        'Accept: application/json, text/html, */*',
-                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Referer: ' . $baseUrl . '/my/',
-                    'Accept-Language: en-US,en;q=0.5',
-                    'Connection: keep-alive'
-                    ]);
-                
-                // Reduced delay to prevent timeout
-                usleep(200000);
-        // 0.2 second delay
-                
-            /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-                    $response = curl_exec($ch);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                    curl_close($ch);
-
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Notifications response HTTP Code for $subplatformName: $httpCode", FILE_APPEND);
-                
-                // Debug: Log a preview of the response content
-                $responsePreview = substr(strip_tags($response), 0, 500);
-                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Response preview for $subplatformName: $responsePreview", FILE_APPEND);
-
-                // Step 4: Parse notifications using LMS-specific logic
-                // Try to parse notifications from dashboard first
-                $notifications = parseLmsSubplatformNotificationsFromHtml($dashboardResponse, $subplatformName, $username);
-                
-                // If no notifications found from dashboard, try the notifications endpoint
-                if (empty($notifications)) {
-
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] No notifications found in dashboard for $subplatformName, trying notifications endpoint", FILE_APPEND);
-                        $notifications = parseLmsSubplatformNotificationsFromHtml($response, $subplatformName, $username);
-                    
-        }
-                
-                if (!empty($notifications)) {
-
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Found " . count($notifications) . " notifications from $subplatformName", FILE_APPEND);
-                        $allNotifications = array_merge($allNotifications, $notifications);
-                    
-        }
-        else {
-
-                        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] No notifications found from $subplatformName", FILE_APPEND);
-                    
-        }
-            
-    }
-        
-        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Total LMS sub-platform notifications found: " . count($allNotifications), FILE_APPEND);
-        return $allNotifications;
-}
 
 
 /**
@@ -7553,1578 +5117,17 @@ function fetchAllLmsSubplatformNotifications($username) {
  * This function proxies requests to LMS sub-platforms to maintain session state
  */
 
-function handleLmsSubplatformProxy() {
 
-        global $lms_subplatforms;
-
-        $subplatformName = isset($_GET['subplatform']) ? urldecode($_GET['subplatform']) : '';
-        $username = isset($_GET['username']) ? $_GET['username'] : '';
-        $path = isset($_GET['path']) ? $_GET['path'] : (isset($_GET['page']) ? $_GET['page'] : '');
-
-        if (!$subplatformName || !$username) {
-
-                http_response_code(400);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Sub-platform name and username are required',
-                    'message' => 'You must provide both a sub-platform name and a username.'
-                ]);
-                return;
-            
-    }
-
-        $targetSubplatform = null;
-        foreach ($lms_subplatforms as $subplatform) {
-
-                if ($subplatform['name'] === $subplatformName) {
-
-                        $targetSubplatform = $subplatform;
-                        break;
-                    
-        }
-            
-    }
-
-        if (!$targetSubplatform) {
-
-                http_response_code(404);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Sub-platform not found',
-                    'message' => 'The specified sub-platform does not exist.'
-                ]);
-                return;
-            
-    }
-
-        $baseUrl = rtrim($targetSubplatform['url'], '/');
-
-        // Normalize path to avoid double /LMS issues and handle root navigation
-        // If base ends with /LMS and incoming path is 'LMS' or '/LMS' or starts with it, strip the leading LMS segment
-        $originalPath = $path;
-        if (substr($baseUrl, -4) === '/LMS') {
-
-                // Strip optional leading slash, then a single leading 'LMS' segment with optional trailing slash
-                if (preg_match('/^\/?LMS(\/|$)/i', $path)) {
-
-                        $path = preg_replace('/^\/?LMS\/?/i', '', $path);
-                    
-        }
-                // Special case: if path becomes empty (i.e., was exactly 'LMS' or '/LMS'), keep it as base ("")
-                if ($path === null) {
-            $path = '';
-        }
-            
-    }
-        // Log normalization if any change
-        if ($originalPath !== $path) {
-
-                error_log("LMS Proxy Path Normalize: '$originalPath' -> '$path' for baseUrl: '$baseUrl'");
-            
-    }
-
-        // Fix double-encoded YUI paths
-        if (strpos($path, 'yui_combo.php') !== false) {
-
-                $decodedPath = urldecode($path);
-                if (strpos($decodedPath, 'yui_combo.php') !== false) {
-
-                        $path = $decodedPath;
-                    
-        }
-            
-    }
-        
-        // Debug logging - Remove after testing
-        $originalPath = $path;
-        
-        // Remove leading LMS/ from path if baseUrl already ends with /LMS
-        if (substr($baseUrl, -4) === '/LMS' && strpos($path, 'LMS/') === 0) {
-
-                $path = substr($path, 4);
-        // Remove 'LMS/' from the beginning
-                error_log("LMS Proxy URL Fix: '$originalPath' -> '$path' for baseUrl: '$baseUrl'");
-            
-    }
-        
-        // JAVASCRIPT EXTENSION FIX: Handle missing .js extensions for JavaScript files
-        if (strpos($path, 'lib/javascript.php') !== false || strpos($path, 'lib/requirejs') !== false) {
-
-                // Check if this looks like a JavaScript file missing its extension
-                if (preg_match('/\/([^\/]+)$/', $path, $matches)) {
-
-                        $filename = $matches[1];
-                        // If it doesn't have an extension but looks like a JS file, add .js
-                        if (!preg_match('/\.[a-zA-Z0-9]+$/', $filename) && 
-                            (strpos($filename, 'jquery') !== false || 
-                             strpos($filename, 'min') !== false || 
-                /* INCLUDE/REQUIRE: Verify that included paths are not user-controlled to avoid remote code execution. */
-                             strpos($filename, 'require') !== false ||
-                             strpos($filename, 'polyfill') !== false ||
-                             strpos($filename, 'babel') !== false ||
-                             strpos($filename, 'javascript-static') !== false)) {
-
-                                $path .= '.js';
-                                error_log("JS Extension Fix: '$originalPath' -> '$path' (added .js extension)");
-                            
-            }
-                    
-        }
-            
-    }
-        
-        // SPECIFIC FIX: Handle jQuery path issues
-        if (strpos($path, 'jquery-3.5.1.min') !== false && !strpos($path, '.js')) {
-
-                $path .= '.js';
-                error_log("jQuery Extension Fix: '$originalPath' -> '$path' (added .js extension)");
-            
-    }
-        
-        $targetUrl = $baseUrl . '/' . ltrim($path, '/');
-
-        $credentials = get_platform_credentials($username, 'LMS');
-        if (!$credentials) {
-
-                http_response_code(401);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'LMS credentials not found for user',
-                    'message' => 'LMS credentials not found for this user.'
-                ]);
-                return;
-            
-    }
-
-        // Use consistent cookie file path with the direct link function
-        $host = parse_url($baseUrl, PHP_URL_HOST);
-        $cookieFile = __DIR__ . '/../cookies/' . $username . '_' . $host . '.txt';
-
-        // Create cookies directory if it doesn't exist
-        if (!is_dir(__DIR__ . '/../cookies')) {
-
-                mkdir(__DIR__ . '/../cookies', 0755, true);
-            
-    }
-
-        // IMPROVED: Enhanced session management and re-authentication
-        $needsReauth = false;
-        $logFile = __DIR__ . '/php_errors.log';
-        
-        // Check if cookie file exists and is recent (within 25 minutes for course navigation)
-        if (!file_exists($cookieFile)) {
-
-                $needsReauth = true;
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] No cookie file found for $username on $host, will authenticate\n", FILE_APPEND);
-            
-    }
-    else {
-
-                $cookieAge = time() - filemtime($cookieFile);
-                if ($cookieAge > 1500) {
-            // Extended to 25 minutes for course navigation
-                         $needsReauth = true;
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Cookie file for $username on $host is $cookieAge seconds old, will re-authenticate\n", FILE_APPEND);
-                    
-        }
-        else {
-
-                        // Update cookie file timestamp to keep session alive for course navigation
-                        touch($cookieFile);
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Session keep-alive: Updated cookie timestamp for $username on $host (age: {$cookieAge}s)\n", FILE_APPEND);
-                    
-        }
-            
-    }
-
-        if ($needsReauth) {
-
-                // Use the internal authentication helper
-                $authResult = authenticateToLmsSubplatformInternal($username, $subplatformName, $targetSubplatform, $credentials, $logFile, $cookieFile);
-                if (!$authResult['success']) {
-
-                        http_response_code(401);
-                /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                        echo json_encode([
-                            'error' => 'Failed to authenticate with LMS sub-platform: ' . $authResult['error'],
-                            'message' => 'Failed to authenticate with the LMS sub-platform.'
-                        ]);
-                        return;
-                    
-        }
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Successfully authenticated $username to $subplatformName\n", FILE_APPEND);
-                
-                // Verify session is established by visiting dashboard first
-                $dashboardUrl = $baseUrl . '/my/';
-                $ch = curl_init($dashboardUrl);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-                curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language: en-US,en;q=0.5',
-                    'Connection: keep-alive',
-                    'Upgrade-Insecure-Requests: 1'
-                ]);
-                
-            /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-                $dashboardResponse = curl_exec($ch);
-                $dashboardHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Session verification for $subplatformName (HTTP: $dashboardHttpCode)\n", FILE_APPEND);
-                
-                // If dashboard still shows login page, force re-authentication
-                if (strpos($dashboardResponse, 'Log in to the site') !== false) {
-
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] WARNING: Session verification failed for $subplatformName, forcing re-authentication\n", FILE_APPEND);
-                        $authResult = authenticateToLmsSubplatformInternal($username, $subplatformName, $targetSubplatform, $credentials, $logFile, $cookieFile);
-                        if (!$authResult['success']) {
-
-                                http_response_code(401);
-                    /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                                echo json_encode([
-                                    'error' => 'Failed to establish session with LMS sub-platform',
-                                    'message' => 'Failed to establish session with the LMS sub-platform.'
-                                ]);
-                                return;
-                            
-            }
-                    
-        }
-            
-    }
-
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $targetUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HEADER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-        curl_setopt($ch, CURLOPT_COOKIESESSION, false);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        
-        // Enhanced headers for better session management and navigation
-        $requestHeaders = [
-            'Referer: ' . $baseUrl . '/',
-            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language: en-US,en;q=0.5',
-            'Accept-Encoding: gzip, deflate',
-            'DNT: 1',
-            'Connection: keep-alive',
-            'Upgrade-Insecure-Requests: 1',
-            'Sec-Fetch-Dest: document',
-            'Sec-Fetch-Mode: navigate',
-            'Sec-Fetch-Site: same-origin'
-        ];
-        
-        // Add special headers for course navigation and session persistence
-        if (strpos($path, 'course/') !== false || strpos($path, 'mod/') !== false) {
-                $requestHeaders[] = 'Cache-Control: no-cache';
-                $requestHeaders[] = 'Pragma: no-cache';
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Course navigation detected for path: $path\n", FILE_APPEND);
-        }
-        
-        // Add navigation specific headers for better session tracking - but don't add AJAX headers for regular navigation
-        if (strpos($path, '/') !== false && $path !== '') {
-                // Only add cache control for navigation, not AJAX header that might confuse some LMS systems
-                $requestHeaders[] = 'Cache-Control: no-cache';
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Enhanced headers for navigation path: $path\n", FILE_APPEND);
-        }
-        
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $requestHeaders);
-        
-        // Enhanced encoding and compression support with proper decompression
-        curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate'); // Explicitly support gzip and deflate
-        curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
-        
-        // Disable SSL verification for now to avoid connection issues
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $response = curl_exec($ch);
-        
-        // Check for curl errors first
-        if (curl_errno($ch)) {
-            $error = curl_error($ch);
-            $errorCode = curl_errno($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-            curl_close($ch);
-            
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] CURL Error #$errorCode: $error\n", FILE_APPEND);
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Target URL: $targetUrl\n", FILE_APPEND);
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Effective URL: $effectiveUrl\n", FILE_APPEND);
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] HTTP Code: $httpCode\n", FILE_APPEND);
-            
-            http_response_code(500);
-            echo json_encode([
-                'error' => 'Connection failed', 
-                'message' => 'Unable to connect to LMS server',
-                'details' => "CURL Error #$errorCode: $error",
-                'target_url' => $targetUrl
-            ]);
-            return;
-        }
-        
-        $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        $headers = substr($response, 0, $header_size);
-        $body = substr($response, $header_size);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-        curl_close($ch);
-        
-        // Enhanced content validation and compression detection
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] LMS Proxy Response - HTTP: $httpCode, Length: " . strlen($body) . ", Content-Type: $contentType\n", FILE_APPEND);
-        
-        // Check if content appears to be binary/compressed
-        $isBinary = !mb_check_encoding($body, 'UTF-8') && !ctype_print(substr($body, 0, 100));
-        if ($isBinary) {
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] WARNING: Content appears to be binary/compressed, attempting manual decompression\n", FILE_APPEND);
-            
-            // Check if it's gzipped content that wasn't automatically decompressed
-            if (substr($body, 0, 2) === "\x1f\x8b") {
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Detected gzip header, attempting manual decompression\n", FILE_APPEND);
-                $decompressed = @gzdecode($body);
-                if ($decompressed !== false) {
-                    $body = $decompressed;
-                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Successfully decompressed gzip content\n", FILE_APPEND);
-                } else {
-                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] ERROR: Failed to decompress gzip content\n", FILE_APPEND);
-                }
-            }
-            
-            // Check if it's deflate compressed
-            if (strlen($body) > 2 && ord($body[0]) === 0x78) {
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Detected deflate header, attempting manual decompression\n", FILE_APPEND);
-                $decompressed = @gzinflate($body);
-                if ($decompressed !== false) {
-                    $body = $decompressed;
-                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Successfully decompressed deflate content\n", FILE_APPEND);
-                } else {
-                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] ERROR: Failed to decompress deflate content\n", FILE_APPEND);
-                }
-            }
-        }
-        
-        // Handle encoding issues and content validation after decompression
-        if ($body && $contentType && stripos($contentType, 'text/html') !== false) {
-            // Log content info for debugging
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] After decompression - Content length: " . strlen($body) . "\n", FILE_APPEND);
-            
-            // Check encoding and detect issues
-            $isValidUTF8 = mb_check_encoding($body, 'UTF-8');
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] UTF-8 valid: " . ($isValidUTF8 ? 'YES' : 'NO') . "\n", FILE_APPEND);
-            
-            if (!$isValidUTF8) {
-                $originalEncoding = mb_detect_encoding($body, 'auto', true);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Detected encoding: " . ($originalEncoding ?: 'UNKNOWN') . "\n", FILE_APPEND);
-                $body = mb_convert_encoding($body, 'UTF-8', $originalEncoding ?: 'ISO-8859-1');
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Content encoding converted to UTF-8\n", FILE_APPEND);
-            }
-            
-            // Remove any BOM characters that might cause issues
-            $body = preg_replace('/^\xEF\xBB\xBF/', '', $body);
-            
-            // Check for valid HTML structure
-            if (preg_match('/<html[^>]*>/i', $body) || preg_match('/<!DOCTYPE/i', $body)) {
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] HTML structure detected - content appears valid\n", FILE_APPEND);
-            } else {
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] WARNING: Content doesn't appear to be valid HTML\n", FILE_APPEND);
-                // Log first 200 characters for debugging
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Content preview: " . substr($body, 0, 200) . "\n", FILE_APPEND);
-            }
-        }
-
-        // Disable any PHP output compression to prevent double compression
-        if (function_exists('ini_set')) {
-            ini_set('zlib.output_compression', 'Off');
-            ini_set('output_buffering', 'Off');
-        }
-        
-        // Enhanced comprehensive session validation and re-authentication
-        $needsReauth = false;
-        $reAuthReason = '';
-        
-        // Check for HTTP redirects to login pages
-        if (($httpCode == 302 || $httpCode == 301) && (strpos($effectiveUrl, 'login') !== false || strpos($effectiveUrl, 'auth') !== false)) {
-            $needsReauth = true;
-            $reAuthReason = "HTTP redirect to login page: $effectiveUrl";
-        }
-        
-        // Check for login form in response body - be more specific to avoid false positives
-        $hasActualLoginForm = false;
-        if (stripos($body, '<form') !== false) {
-            // Look for actual login forms with both username AND password fields in the same form
-            if (preg_match('/<form[^>]*>.*?(<input[^>]*name\s*=\s*["\']username["\'][^>]*>.*?<input[^>]*type\s*=\s*["\']password["\'][^>]*>|<input[^>]*type\s*=\s*["\']password["\'][^>]*>.*?<input[^>]*name\s*=\s*["\']username["\'][^>]*>).*?<\/form>/is', $body)) {
-                $hasActualLoginForm = true;
-            }
-        }
-        
-        if ($hasActualLoginForm) {
-            $needsReauth = true;
-            $reAuthReason = "Actual login form with username/password fields detected";
-        }
-        
-        // Check for specific Moodle login indicators - be more specific
-        if (stripos($body, 'You are not logged in') !== false ||
-            stripos($body, 'Login required') !== false ||
-            stripos($body, 'Your session has expired') !== false ||
-            strpos($body, 'requireslogin') !== false) {
-            $needsReauth = true;
-            $reAuthReason = "Specific session expiry message detected";
-        }
-        
-        // Check if we're being shown a login page (title check)
-        if (preg_match('/<title[^>]*>([^<]*login[^<]*)<\/title>/i', $body, $matches)) {
-            $needsReauth = true;
-            $reAuthReason = "Login page title detected: " . trim($matches[1]);
-        }
-        
-        // Check for session timeout indicators - only for HTML responses and very specific messages
-        $isHtmlResponse = stripos($contentType, 'text/html') !== false || 
-                          (!$contentType && stripos($body, '<html') !== false);
-        
-        if ($isHtmlResponse && (
-            stripos($body, 'Your session has expired') !== false ||
-            stripos($body, 'Session timeout') !== false ||
-            stripos($body, 'Session invalid') !== false
-        )) {
-            $needsReauth = true;
-            $reAuthReason = "Explicit session timeout message detected";
-        }
-        
-        if ($needsReauth) {
-            // Check if this is a CSS or resource request - if so, don't re-authenticate to avoid loops
-            $isCssOrResourceRequest = strpos($path, 'theme/styles.php') !== false ||
-                                    strpos($path, 'theme/image.php') !== false ||
-                                    strpos($path, 'theme/font.php') !== false ||
-                                    strpos($path, '.css') !== false ||
-                                    strpos($path, '.js') !== false ||
-                                    strpos($path, '.png') !== false ||
-                                    strpos($path, '.jpg') !== false ||
-                                    strpos($path, '.gif') !== false;
-            
-            // Debug: Log what path we're checking
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Checking path for CSS/resource: '$path', isCssOrResource: " . ($isCssOrResourceRequest ? 'YES' : 'NO') . "\n", FILE_APPEND);
-            
-            if ($isCssOrResourceRequest) {
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Skipping re-authentication for CSS/resource request: $path\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Returning empty response to prevent broken styling\n", FILE_APPEND);
-                
-                // Return an appropriate empty response based on content type
-                while (ob_get_level()) {
-                    ob_end_clean();
-                }
-                
-                if (strpos($path, 'styles.php') !== false || strpos($path, '.css') !== false) {
-                    header('Content-Type: text/css');
-                    echo '/* CSS temporarily unavailable due to session timeout */';
-                } else {
-                    header('Content-Type: text/plain');
-                    echo '';
-                }
-                return;
-            }
-            
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] SESSION ISSUE for $subplatformName: $reAuthReason\n", FILE_APPEND);
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Attempting re-authentication...\n", FILE_APPEND);
-            
-            // Try to re-authenticate
-            $authResult = authenticateToLmsSubplatformInternal($username, $subplatformName, $targetSubplatform, $credentials, $logFile, $cookieFile);
-            if ($authResult['success']) {
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Re-authentication successful, retrying request...\n", FILE_APPEND);
-                
-                // Retry the page fetch with fresh session and enhanced headers
-                $ch = curl_init($targetUrl);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_HEADER, true);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-                curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-                curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-                curl_setopt($ch, CURLOPT_COOKIESESSION, false);
-                curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($requestHeaders, [
-                    'Cache-Control: no-cache',
-                    'Pragma: no-cache',
-                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Accept-Language: en-US,en;q=0.5',
-                    'Accept-Encoding: gzip, deflate',
-                    'DNT: 1',
-                    'Connection: keep-alive',
-                    'Sec-Fetch-Dest: document',
-                    'Sec-Fetch-Mode: navigate'
-                ]));
-
-                /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-                $response = curl_exec($ch);
-                $header_size = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-                $headers = substr($response, 0, $header_size);
-                $body = substr($response, $header_size);
-                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                $effectiveUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-                curl_close($ch);
-                
-                // Apply the same decompression logic for the retry request
-                $isBinary = !mb_check_encoding($body, 'UTF-8') && !ctype_print(substr($body, 0, 100));
-                if ($isBinary) {
-                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] RETRY: Content appears to be binary/compressed, attempting manual decompression\n", FILE_APPEND);
-                    
-                    // Check if it's gzipped content that wasn't automatically decompressed
-                    if (substr($body, 0, 2) === "\x1f\x8b") {
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] RETRY: Detected gzip header, attempting manual decompression\n", FILE_APPEND);
-                        $decompressed = @gzdecode($body);
-                        if ($decompressed !== false) {
-                            $body = $decompressed;
-                            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] RETRY: Successfully decompressed gzip content\n", FILE_APPEND);
-                        } else {
-                            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] RETRY: ERROR: Failed to decompress gzip content\n", FILE_APPEND);
-                        }
-                    }
-                    
-                    // Check if it's deflate compressed
-                    if (strlen($body) > 2 && ord($body[0]) === 0x78) {
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] RETRY: Detected deflate header, attempting manual decompression\n", FILE_APPEND);
-                        $decompressed = @gzinflate($body);
-                        if ($decompressed !== false) {
-                            $body = $decompressed;
-                            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] RETRY: Successfully decompressed deflate content\n", FILE_APPEND);
-                        } else {
-                            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] RETRY: ERROR: Failed to decompress deflate content\n", FILE_APPEND);
-                        }
-                    }
-                }
-                
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Re-authentication retry completed (HTTP: $httpCode, URL: $effectiveUrl)\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] RETRY: After decompression - Body length: " . strlen($body) . " bytes\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] RETRY: Body is valid UTF-8: " . (mb_check_encoding($body, 'UTF-8') ? 'YES' : 'NO') . "\n", FILE_APPEND);
-                
-                // Final check to verify the re-authentication worked
-                if (stripos($body, 'Log in to the site') === false && 
-                    stripos($body, 'You are not logged in') === false &&
-                    !preg_match('/<title[^>]*>([^<]*login[^<]*)<\/title>/i', $body)) {
-                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] SUCCESS: Re-authentication successful, session restored\n", FILE_APPEND);
-                } else {
-                    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] WARNING: Re-authentication may have failed, still seeing login indicators\n", FILE_APPEND);
-                }
-            } else {
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] ERROR: Re-authentication failed: " . $authResult['error'] . "\n", FILE_APPEND);
-            }
-        }
-
-        // Determine Content-Type from headers before error checking
-        $contentType = 'text/html';
-    // Default
-        if (preg_match('/^Content-Type:\s*([^\r]+)/mi', $headers, $matches)) {
-
-                $contentType = trim($matches[1]);
-            
-    }
-
-        if ($httpCode !== 200) {
-
-                http_response_code($httpCode);
-                
-                // For non-HTML resources (JS, CSS, fonts, etc.), just return the error status without JSON
-                // This prevents JavaScript from trying to parse "Not Found" HTML as JSON
-                if (!stripos($contentType, 'text/html') && !stripos($path, '.php') && !stripos($path, 'ajax')) {
-
-                        // For static resources, just return empty content with proper status
-                        echo '';
-                        return;
-                    
-        }
-                
-                // For HTML/PHP/AJAX requests, return JSON error
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => "Error fetching LMS content: HTTP $httpCode",
-                    'message' => 'An error occurred while fetching the LMS content.'
-                ]);
-                return;
-            
-    }
-
-        // Determine Content-Type
-        $contentType = 'text/html';
-    // Default
-        if (preg_match('/^Content-Type:\s*([^\r]+)/mi', $headers, $matches)) {
-
-                $contentType = trim($matches[1]);
-            
-    }
-
-        // Special handling for styles.php - force CSS content type
-        if (strpos($path, 'styles.php') !== false) {
-            $contentType = 'text/css';
-            file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] CSS DETECTED! Path: $path, Setting content-type to: $contentType\n", FILE_APPEND);
-        }
-
-        // Set the correct content type for the response
-        header('Content-Type: ' . $contentType);
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] HEADER SET: Content-Type: $contentType\n", FILE_APPEND);
-
-        // Process only HTML responses for URL rewriting
-        if (stripos($contentType, 'text/html') !== false) {
-
-                $response = $body;
-                
-                // Debug: Check the state of $body before any processing
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Before processing - Body length: " . strlen($body) . " bytes\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Before processing - Body is valid UTF-8: " . (mb_check_encoding($body, 'UTF-8') ? 'YES' : 'NO') . "\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Before processing - Body first 200 chars: " . substr($body, 0, 200) . "\n", FILE_APPEND);
-
-                // Fix DOCTYPE to prevent KaTeX quirks mode warning
-                if (!preg_match('/<!DOCTYPE/i', $response)) {
-
-                        // If no DOCTYPE is present, add HTML5 DOCTYPE at the beginning
-                        $response = "<!DOCTYPE html>\n" . $response;
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Added missing DOCTYPE to prevent KaTeX quirks mode\n", FILE_APPEND);
-                    
-        }
-        else {
-
-                        // Ensure DOCTYPE is HTML5 compliant to avoid quirks mode
-                        $response = preg_replace('/<!DOCTYPE[^>]*>/i', '<!DOCTYPE html>', $response, 1);
-                    
-        }
-
-                // Ensure proper meta charset is present to prevent encoding issues
-                if (!preg_match('/<meta[^>]*charset[^>]*>/i', $response)) {
-
-                        $response = preg_replace('/(<head[^>]*>)/i', '$1' . "\n" . '<meta charset="UTF-8">', $response, 1);
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Added missing charset meta tag\n", FILE_APPEND);
-                    
-        }
-                
-                // Debug: Check the state of $response after DOCTYPE/charset processing
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] After DOCTYPE/charset - Response length: " . strlen($response) . " bytes\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] After DOCTYPE/charset - Response is valid UTF-8: " . (mb_check_encoding($response, 'UTF-8') ? 'YES' : 'NO') . "\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] After DOCTYPE/charset - Response first 200 chars: " . substr($response, 0, 200) . "\n", FILE_APPEND);
-
-                // Ensure proper viewport meta tag for responsive rendering
-                if (!preg_match('/<meta[^>]*name=["\']viewport["\'][^>]*>/i', $response)) {
-
-                        $response = preg_replace('/(<meta charset[^>]*>)/i', '$1' . "\n" . '<meta name="viewport" content="width=device-width, initial-scale=1.0">', $response, 1);
-                    
-        }
-
-                // Add early error prevention script right after head tag
-                $earlyErrorPrevention = "
-        <script>
-        // Comprehensive early error prevention for LMS proxy
-        (function() {
-            // Wait for RequireJS to be fully loaded before configuring
-            function waitForRequireJS(callback, maxAttempts) {
-                maxAttempts = maxAttempts || 30; // 3 seconds max wait
-                var attempts = 0;
-                
-                function check() {
-                    attempts++;
-                    
-                    if (typeof require !== 'undefined' && 
-                        typeof require.config === 'function' && 
-                        typeof define === 'function') {
-                        // RequireJS is ready
-                        try {
-                            callback();
-                        } catch (e) {
-                            console.warn('RequireJS callback error handled:', e.message);
-                        }
-                    } else if (attempts < maxAttempts) {
-                        // Wait a bit more
-                        setTimeout(check, 100);
-                    } else {
-                        // Timeout - set up fallbacks
-                        console.warn('RequireJS not loaded after ' + (maxAttempts * 100) + 'ms, using fallbacks');
-                        setupRequireJSFallbacks();
-                        try {
-                            callback();
-                        } catch (e) {
-                            console.warn('Fallback callback error handled:', e.message);
-                        }
-                    }
-                }
-                
-                check();
-            }
-            
-            // Set up RequireJS fallbacks
-            function setupRequireJSFallbacks() {
-                if (typeof window.require === 'undefined') {
-                    window.require = function(deps, callback) {
-                        if (typeof callback === 'function') {
-                            setTimeout(function() {
-                                try {
-                                    callback();
-                                } catch (e) {
-                                    console.warn('Fallback require callback error:', e.message);
-                                }
-                            }, 10);
-                        }
-                    };
-                    
-                    window.require.config = function(config) {
-                        console.warn('Fallback require.config called');
-                        return this;
-                    };
-                }
-                
-                if (typeof window.define === 'undefined') {
-                    window.define = function(name, deps, factory) {
-                        console.warn('Fallback define called for:', name);
-                        window.define._modules = window.define._modules || {};
-                        window.define._modules[name] = factory;
-                    };
-                }
-            }
-            
-            // Performance optimization: Debounce function
-            function debounce(func, wait) {
-                var timeout;
-                return function executedFunction() {
-                    var context = this;
-                    var args = arguments;
-                    var later = function() {
-                        timeout = null;
-                        func.apply(context, args);
-                    };
-                    clearTimeout(timeout);
-                    timeout = setTimeout(later, wait);
-                };
-            }
-            
-            // Safe execution wrapper
-            function safeExecute(fn, context, args) {
-                try {
-                    return fn.apply(context || window, args || []);
-                } catch (e) {
-                    console.warn('Safe execution handled error:', e.message);
-                    return null;
-                }
-            }
-            
-            // Override addEventListener globally to prevent null errors
-            var originalAddEventListener = EventTarget.prototype.addEventListener;
-            EventTarget.prototype.addEventListener = function(type, listener, options) {
-                if (this === null || this === undefined) {
-                    console.warn('Prevented addEventListener on null element for event:', type);
-                    return;
-                }
-                try {
-                    return originalAddEventListener.call(this, type, listener, options);
-                } catch (e) {
-                    console.warn('addEventListener error prevented:', e.message);
-                }
-            };
-            
-            // Override setTimeout to prevent performance violations
-            var originalSetTimeout = window.setTimeout;
-            var timeoutQueue = [];
-            var isProcessing = false;
-            
-            window.setTimeout = function(callback, delay) {
-                if (delay < 50) {
-                    // Use requestAnimationFrame for very short delays
-                    return requestAnimationFrame(function() {
-                        safeExecute(callback);
-                    });
-                }
-                
-                // Queue longer timeouts to prevent violations
-                if (delay < 200) {
-                    timeoutQueue.push({ callback: callback, delay: delay });
-                    if (!isProcessing) {
-                        processTimeoutQueue();
-                    }
-                    return timeoutQueue.length;
-                }
-                
-                return originalSetTimeout.call(window, function() {
-                    safeExecute(callback);
-                }, delay);
-            };
-            
-            function processTimeoutQueue() {
-                if (timeoutQueue.length === 0) {
-                    isProcessing = false;
-                    return;
-                }
-                
-                isProcessing = true;
-                var item = timeoutQueue.shift();
-                
-                requestAnimationFrame(function() {
-                    safeExecute(item.callback);
-                    if (timeoutQueue.length > 0) {
-                        requestAnimationFrame(processTimeoutQueue);
-                    } else {
-                        isProcessing = false;
-                    }
-                });
-            }
-            
-            // Early RequireJS error handling
-            window.requirejs = window.requirejs || {};
-            window.requirejs.onError = function(err) {
-                if (err.message && (err.message.indexOf('addEventListener') !== -1 || 
-                                  err.message.indexOf('configure') !== -1)) {
-                    console.warn('RequireJS error handled early:', err.message);
-                    return;
-                }
-                console.error('RequireJS error:', err);
-            };
-            
-            // Early YUI mock
-            if (!window.YUI) {
-                window.YUI = function(config) {
-                    return {
-                        use: function() {
-                            var callback = arguments[arguments.length - 1];
-                            if (typeof callback === 'function') {
-                                requestAnimationFrame(function() {
-                                    safeExecute(callback, null, [{
-                                        configure: function() { return this; },
-                                        on: function() { return this; },
-                                        all: function() { return { each: function() {} }; },
-                                        one: function() { return null; }
-                                    }]);
-                                });
-                            }
-                            return this;
-                        },
-                        configure: function() { return this; }
-                    };
-                };
-                window.YUI.GlobalConfig = { configure: function() {} };
-            }
-            
-            // Early modal function override
-            window.initModal = window.initModal || function(element) {
-                if (!element) {
-                    console.warn('Early initModal: null element prevented');
-                    var dummy = document.createElement('div');
-                    dummy.style.display = 'none';
-                    dummy.className = 'modal-dummy';
-                    if (document.body) document.body.appendChild(dummy);
-                    return dummy;
-                }
-                return element;
-            };
-            
-            // Early configure function
-            window.configure = window.configure || function() { 
-                return this; 
-            };
-            
-            // Pre-define problematic modules before they load
-            if (typeof define !== 'undefined') {
-                // Safe version of core/first to prevent modal errors
-                define('core/first', [], function() {
-                    return {
-                        init: function() {
-                            console.log('Safe core/first module loaded');
-                        },
-                        initModal: function(element) {
-                            if (!element) {
-                                console.warn('initModal called with null element - creating safe dummy');
-                                var dummy = document.createElement('div');
-                                dummy.style.display = 'none';
-                                dummy.className = 'safe-modal-dummy';
-                                return dummy;
-                            }
-                            
-                            // Add safe event listener
-                            if (element.addEventListener) {
-                                var originalAddEvent = element.addEventListener;
-                                element.addEventListener = function(type, listener, options) {
-                                    try {
-                                        return originalAddEvent.call(this, type, listener, options);
-                                    } catch (e) {
-                                        console.warn('Modal addEventListener error handled:', e.message);
-                                    }
-                                };
-                            }
-                            
-                            return element;
-                        }
-                    };
-                });
-            }
-            
-            // Override common problematic functions
-            var originalQuerySelector = Document.prototype.querySelector;
-            Document.prototype.querySelector = function(selector) {
-                try {
-                    return originalQuerySelector.call(this, selector);
-                } catch (e) {
-                    console.warn('querySelector error:', e.message);
-                    return null;
-                }
-            };
-            
-        })();
-        </script>";
-                
-                $response = preg_replace('/(<head[^>]*>)/i', '$1' . $earlyErrorPrevention, $response, 1);
-
-                // --- START: COMPREHENSIVE PROXY ENHANCEMENT SYSTEM ---
-                
-                // Generate base proxy URL for this LMS subplatform
-                $proxyBaseUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . '?endpoint=lms_subplatform_proxy&username=' . urlencode($username) . '&subplatform=' . urlencode($subplatformName) . '&path=';
-
-                // --- END: COMPREHENSIVE PROXY ENHANCEMENT SYSTEM ---
-
-                // ENHANCED: Apply comprehensive proxy system for perfect display
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] BEFORE URL REWRITING - Response length: " . strlen($response) . "\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] BEFORE URL REWRITING - First script tag: " . (preg_match('/<script[^>]*src="[^"]*"/i', $response, $matches) ? $matches[0] : 'NO SCRIPT TAG FOUND') . "\n", FILE_APPEND);
-                
-                $response = rewriteUrlsForProxy($response, 'lms', $username, $baseUrl, $proxyBaseUrl, $subplatformName);
-                
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] AFTER URL REWRITING - Response length: " . strlen($response) . "\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] AFTER URL REWRITING - First script tag: " . (preg_match('/<script[^>]*src="[^"]*"/i', $response, $matches) ? $matches[0] : 'NO SCRIPT TAG FOUND') . "\n", FILE_APPEND);
-                
-                $response = injectProxyJavaScript($response, 'lms', $username, $proxyBaseUrl, $subplatformName);
-                
-                // Final check before sending to browser
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Final response length: " . strlen($response) . " bytes\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Final response is valid UTF-8: " . (mb_check_encoding($response, 'UTF-8') ? 'YES' : 'NO') . "\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Final response first 200 chars: " . substr($response, 0, 200) . "\n", FILE_APPEND);
-                
-                // Clear any output buffers and set proper headers
-                while (ob_get_level()) {
-                    ob_end_clean();
-                }
-                
-                // Only set HTML content-type for HTML responses
-                if (stripos($contentType, 'text/html') !== false) {
-                    header('Content-Type: text/html; charset=UTF-8');
-                }
-                header('Content-Encoding: identity');
-                header('Content-Length: ' . strlen($response));
-                
-                echo $response;
-                return; // Exit function after sending HTML response
-        }
-        else if (stripos($contentType, 'text/css') !== false) {
-
-                // Handle direct CSS file requests via the proxy
-                // This part handles CSS files fetched directly by the browser via the proxy URL.
-                // The font rewriting logic for content *within* these CSS files is here.
-                $response_body = $body;
-
-                $fontProxyUrl = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['SCRIPT_NAME'] . '?endpoint=lms_font_proxy&username=' . urlencode($username) . '&subplatform=' . urlencode($subplatformName) . '&fontpath=';
-
-                // Rewrite CSS url() paths for fonts within the CSS file content itself.
-                // Enhanced pattern to match font.php URLs as well as traditional font files
-                $response_body = preg_replace_callback(
-                    '/url\(["\']?([^"\']*(?:\.(woff2?|ttf|eot|otf)|font\.php)[^"\']*)["\']?\)/i',
-                    function($matches) use ($fontProxyUrl, $baseUrl) {
-
-                            $fontUrl = trim($matches[1], '"\'');
-
-                            // Don't rewrite if already contains our proxy endpoint or if it's already a malformed nested URL
-                            if (strpos($fontUrl, 'endpoint=lms_font_proxy') !== false || strpos($fontUrl, 'api.php?endpoint=') !== false) {
-
-                                    return $matches[0];
-                                
-            }
-
-                            // Handle relative font.php URLs directly (before making them absolute)
-                            if (strpos($fontUrl, 'font.php') !== false && strpos($fontUrl, 'http') !== 0) {
-
-                                    // For relative font.php URLs like "/LMS/theme/font.php/..."
-                                    if (strpos($fontUrl, '/LMS/') === 0) {
-                                        // URL starts with /LMS/, extract everything after /LMS/
-                                        $fontPath = substr($fontUrl, 5); // Remove "/LMS/" prefix
-                                    } else {
-                                        // Other relative font.php URLs
-                                        $fontPath = ltrim($fontUrl, '/');
-                                    }
-                                    $encodedFontPath = urlencode($fontPath);
-                                    $finalFontProxyUrl = $fontProxyUrl . $encodedFontPath;
-                                    return 'url("' . $finalFontProxyUrl . '")';
-                                
-            }
-
-                            // If it's a relative URL, make it absolute
-                            if (strpos($fontUrl, 'http') !== 0) {
-
-                                    $fontUrl = $baseUrl . '/' . ltrim($fontUrl, '/');
-                                
-            }
-
-                            // Handle font.php URLs specifically for all LMS platforms (absolute URLs)
-                            if (strpos($fontUrl, 'font.php') !== false) {
-
-                                    // Extract the font path from font.php URLs
-                                    $fontPath = str_replace($baseUrl . '/', '', $fontUrl);
-                                    $encodedFontPath = urlencode($fontPath);
-                                    $finalFontProxyUrl = $fontProxyUrl . $encodedFontPath;
-                                    return 'url("' . $finalFontProxyUrl . '")';
-                                
-            }
-                            
-                            // Handle direct font URLs for any LMS platform
-                            $allLmsHosts = ['lms1.final.edu.tr', 'lms2.final.edu.tr', 'lms3.final.edu.tr', 'lms4.final.edu.tr', 'lms5.final.edu.tr', 'lms6.final.edu.tr'];
-                            foreach ($allLmsHosts as $lmsHost) {
-
-                                    if (strpos($fontUrl, $lmsHost . '/LMS/theme/font.php') !== false) {
-
-                                            $fontPath = preg_replace('/https?:\/\/' . preg_quote($lmsHost, '/') . '\/LMS\//', '', $fontUrl);
-                                            $encodedFontPath = urlencode($fontPath);
-                                            $finalFontProxyUrl = $fontProxyUrl . $encodedFontPath;
-                                            return 'url("' . $finalFontProxyUrl . '")';
-                                        
-                }
-                                
-            }
-            // Handle any font URLs that contain the LMS domain
-                    if (strpos($fontUrl, 'lms5.final.edu.tr') !== false && strpos($fontUrl, '.woff') !== false) {
-
-                            $fontPath = str_replace('https://lms5.final.edu.tr/LMS/', '', $fontUrl);
-                            $fontPath = str_replace('http://lms5.final.edu.tr/LMS/', '', $fontUrl);
-                            $fontPath = str_replace('https://lms5.final.edu.tr/', '', $fontUrl);
-                            $fontPath = str_replace('http://lms5.final.edu.tr/', '', $fontUrl);
-                            $encodedFontPath = urlencode($fontPath);
-                            $finalFontProxyUrl = $fontProxyUrl . $encodedFontPath;
-                            return 'url("' . $finalFontProxyUrl . '")';
-                        
-            }
-                    
-                    // Handle lms3.final.edu.tr domain fonts
-                    if (strpos($fontUrl, 'lms3.final.edu.tr') !== false && strpos($fontUrl, '.woff') !== false) {
-
-                            $fontPath = str_replace('https://lms3.final.edu.tr/LMS/', '', $fontUrl);
-                            $fontPath = str_replace('http://lms3.final.edu.tr/LMS/', '', $fontUrl);
-                            $fontPath = str_replace('https://lms3.final.edu.tr/', '', $fontUrl);
-                            $fontPath = str_replace('http://lms3.final.edu.tr/', '', $fontUrl);
-                            $encodedFontPath = urlencode($fontPath);
-                            $finalFontProxyUrl = $fontProxyUrl . $encodedFontPath;
-                            return 'url("' . $finalFontProxyUrl . '")';
-                        
-            }
-
-                            // Handle regular font URLs
-                            $fontPath = str_replace($baseUrl . '/', '', $fontUrl);
-                            $encodedFontPath = urlencode($fontPath);
-                            $finalFontProxyUrl = $fontProxyUrl . $encodedFontPath; // Append the path
-
-                            return 'url("' . $finalFontProxyUrl . '")';
-                    },
-                    $response_body
-                );
-
-                // Set proper headers for content
-                // Disable all compression and buffering
-                while (ob_get_level()) {
-                    ob_end_clean();
-                }
-                // Only set HTML content-type if CSS wasn't detected
-                if (!isset($contentType) || $contentType !== 'text/css') {
-                    header('Content-Type: text/html; charset=UTF-8');
-                }
-                header('Content-Encoding: identity'); // Disable any server compression
-                header('Transfer-Encoding: '); // Clear transfer encoding
-                header('Content-Length: ' . strlen($response_body));
-                
-                // Log the first few bytes being sent to browser for debugging
-                $logFile = __DIR__ . '/php_errors.log';
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Sending to browser - Length: " . strlen($response_body) . " bytes\n", FILE_APPEND);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] First 200 chars being sent: " . substr($response_body, 0, 200) . "\n", FILE_APPEND);
-                
-                echo $response_body;
-
-            
-    }
-    else {
-
-                // For other content types (images, fonts served directly by the proxy endpoint, PDFs, etc.), send as-is.
-                header('Content-Type: ' . ($contentType ?: 'text/plain'));
-                header('Content-Encoding: identity'); // Disable any server compression
-                
-                echo $body;
-            
-    }
-}
 // --- Helper Function for LMS Sub-platform Authentication (Internal Use) ---
 // This replicates the core logic of handleLmsSubplatformAuth but is designed to be called internally
 // and returns structured data instead of echoing JSON. It also receives the $cookieFile path.
-function authenticateToLmsSubplatformInternal($username, $subplatformName, $targetSubplatform, $credentials, $logFile, $cookieFile) {
 
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] authenticateToLmsSubplatformInternal called for: $subplatformName, user: $username\n", FILE_APPEND);
-
-        $baseUrl = rtrim($targetSubplatform['url'], '/');
-        $loginUrl = $baseUrl . '/' . ltrim($targetSubplatform['login_endpoint'], '/');
-
-
-        // Step 1: Get the login page to extract the logintoken
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Fetching login page (Internal): $loginUrl\n", FILE_APPEND);
-        $ch = curl_init($loginUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-    // Store cookies from login page
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        ]);
-
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $loginPageResponse = curl_exec($ch);
-        $loginPageHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        if ($curlError || $loginPageHttpCode !== 200) {
-
-                $errorDetails = $curlError ?: "HTTP $loginPageHttpCode";
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Failed to fetch login page (Internal): $errorDetails\n", FILE_APPEND);
-                return ['success' => false, 'error' => 'Failed to fetch login page', 'details' => $errorDetails];
-            
-    }
-
-        // Step 2: Extract the logintoken (try multiple patterns for different LMS versions)
-        $logintoken = '';
-        $loginTokenPatterns = [
-            '/<input[^>]*name="logintoken"[^>]*value="([^"]*)"/i',
-            '/<input[^>]*value="([^"]*)"[^>]*name="logintoken"/i',
-            '/name="logintoken"[^>]*value="([^"]*)"/i',
-            '/value="([^"]*)"[^>]*name="logintoken"/i',
-            '/"logintoken"\s*:\s*"([^"]*)"/i', // JSON format
-            '/logintoken[\'"]?\s*:\s*[\'"]([^\'"]*)[\'"]/', // JS object format
-        ];
-        
-        foreach ($loginTokenPatterns as $pattern) {
-
-                if (preg_match($pattern, $loginPageResponse, $matches)) {
-
-                        $logintoken = $matches[1];
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Extracted logintoken (Internal): $logintoken\n", FILE_APPEND);
-                        break;
-                    
-        }
-            
-    }
-        
-        if (empty($logintoken)) {
-
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Warning: Could not find logintoken in login page (Internal). Proceeding without it.\n", FILE_APPEND);
-            
-    }
-
-        // Step 3: Perform the login
-        $loginData = [
-            'username' => $credentials['platform_username'],
-            'password' => $credentials['platform_password']
-            // 'anchor' => '',
-        ];
-        if ($logintoken) {
-
-                $loginData['logintoken'] = $logintoken;
-            
-    }
-
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Performing login (Internal) to: $loginUrl\n", FILE_APPEND);
-        $ch = curl_init($loginUrl);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($loginData));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    // Important
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-    // Use cookies
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-    // Update cookie jar
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Content-Type: application/x-www-form-urlencoded',
-            'Referer: ' . $loginUrl
-        ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $loginResponse = curl_exec($ch);
-        $loginHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $loginFinalUrl = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-
-        if ($curlError) {
-
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] cURL Error during login (Internal): $curlError\n", FILE_APPEND);
-                return ['success' => false, 'error' => 'cURL Error during login', 'details' => $curlError];
-            
-    }
-
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Login response HTTP Code (Internal): $loginHttpCode, Final URL: $loginFinalUrl\n", FILE_APPEND);
-
-        // --- Improved Success Check Logic (Same as in handleLmsSubplatformAuth) ---
-        $authenticated = false;
-        $loginPageUrlPattern = '/[\/\\\\]login[\/\\\\]/i';
-
-        if ($loginHttpCode >= 200 && $loginHttpCode < 400) {
-
-                if (!preg_match($loginPageUrlPattern, $loginFinalUrl)) {
-
-                        $authenticated = true;
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Authentication successful (Internal) - Redirected away from login pattern (Final URL: $loginFinalUrl)\n", FILE_APPEND);
-                    
-        }
-        else if (preg_match($loginPageUrlPattern, $loginFinalUrl) && strpos($loginFinalUrl, 'index.php') !== false) {
-
-                        $authenticated = false;
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Authentication failed (Internal) - Still on login/index.php (Final URL: $loginFinalUrl)\n", FILE_APPEND);
-                    
-        }
-        else {
-
-                        if (stripos($loginResponse, 'invalid') !== false ||
-                            stripos($loginResponse, 'incorrect') !== false ||
-                            stripos($loginResponse, 'failure') !== false ||
-                            (stripos($loginResponse, 'error') !== false && stripos($loginResponse, 'yui') === false && stripos($loginResponse, 'Error') === false)
-                           ) {
-
-                                $authenticated = false;
-                                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Authentication failed (Internal) - Found strong failure indicators in response body\n", FILE_APPEND);
-                            
-            }
-            else {
-
-                                if (stripos($loginResponse, 'dashboard') !== false ||
-                                    stripos($loginResponse, 'my/') !== false ||
-                                    stripos($loginResponse, 'logout') !== false ||
-                                    stripos($loginResponse, 'home') !== false) {
-
-                                         $authenticated = true;
-                                         file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Authentication successful (Internal) - Found success indicators in response body (fallback)\n", FILE_APPEND);
-                                    
-                }
-                else {
-
-                                         file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Authentication status ambiguous (Internal), defaulting based on URL check (likely failure).\n", FILE_APPEND);
-                                    
-                }
-                            
-            }
-                    
-        }
-            
-    }
-    else {
-
-                $authenticated = false;
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Authentication failed (Internal) - HTTP Error $loginHttpCode\n", FILE_APPEND);
-            
-    }
-        // --- End of Improved Success Check ---
-
-        if ($authenticated) {
-
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] LMS Sub-platform authentication successful (Internal) for: $subplatformName, user: $username\n", FILE_APPEND);
-                
-                // Step 2.5: Visit dashboard to establish session properly
-                $dashboardUrl = $baseUrl . '/my/';
-                $ch = curl_init($dashboardUrl);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-                curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-                curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-                curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language: en-US,en;q=0.5',
-                    'Connection: keep-alive',
-                    'Upgrade-Insecure-Requests: 1',
-                    'Referer: ' . $baseUrl . '/login/index.php'
-                ]);
-                
-                // Reduced delay to prevent timeout
-                usleep(500000);
-        // 0.5 second delay
-                
-            /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-                $dashboardResponse = curl_exec($ch);
-                $dashboardHttpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
-                
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Visited dashboard for $subplatformName to establish session (HTTP: $dashboardHttpCode)\n", FILE_APPEND);
-                
-                // Check if cookie file exists and has content
-                if (file_exists($cookieFile)) {
-
-                        $cookieContent = file_get_contents($cookieFile);
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Cookie file exists for $subplatformName, size: " . strlen($cookieContent) . " bytes\n", FILE_APPEND);
-                    
-        }
-        else {
-
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] WARNING: Cookie file does not exist for $subplatformName\n", FILE_APPEND);
-                    
-        }
-                
-                // Verify session is established by checking if we're still getting login page
-                if (strpos($dashboardResponse, 'Log in to the site') !== false) {
-
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] WARNING: Dashboard still shows login page for $subplatformName - session not established\n", FILE_APPEND);
-                    
-        }
-        else {
-
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] SUCCESS: Dashboard shows authenticated content for $subplatformName\n", FILE_APPEND);
-                    
-        }
-                
-                return ['success' => true, 'message' => 'Authentication successful', 'dashboardResponse' => $dashboardResponse];
-            
-    }
-    else {
-
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] LMS Sub-platform authentication FAILED (Internal) for: $subplatformName, user: $username (HTTP: $loginHttpCode, Final URL: $loginFinalUrl)\n", FILE_APPEND);
-                $responsePreview = substr(strip_tags($loginResponse), 0, 500);
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Login response preview (Internal): $responsePreview...\n", FILE_APPEND);
-                return ['success' => false, 'error' => 'Login failed or session check failed', 'details' => ['http_code' => $loginHttpCode, 'final_url' => $loginFinalUrl]];
-            
-    }
-}
 /**
  * Handle LMS AJAX service requests (for CORS issues)
  * This function handles AJAX service calls from LMS sub-platforms
  */
-function handleAnalyzeLmsSubplatforms() {
 
-        global $method;
-        
-        if ($method !== 'POST') {
 
-                http_response_code(405);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Method not allowed',
-                    'message' => 'This endpoint only supports POST requests.'
-                ]);
-                return;
-            
-    }
-        
-        /* PARSED INPUT: Reads raw request body (usually JSON). Validate before using. */
-        /* DECODING JSON BODY: Ensure structure and types before trusting values. */
-        $input = json_decode(file_get_contents('php://input'), true);
-        
-        if (!isset($input['username']) || !isset($input['password'])) {
-
-                http_response_code(400);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Username and password are required',
-                    'message' => 'You must provide both a username and a password.'
-                ]);
-                return;
-            
-    }
-}
-function handleLmsAjaxService() {
-
-        global $method, $lms_subplatforms;
-
-        $subplatformName = isset($_GET['subplatform']) ? urldecode($_GET['subplatform']) : '';
-        $username = isset($_GET['username']) ? $_GET['username'] : '';
-        $path = isset($_GET['path']) ? $_GET['path'] : '';
-
-        if (!$subplatformName || !$username || !$path) {
-
-                http_response_code(400);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Sub-platform name, username, and path are required',
-                    'message' => 'You must provide a sub-platform name, username, and path.'
-                ]);
-                return;
-            
-    }
-
-        // Find the sub-platform configuration
-        $targetSubplatform = null;
-        foreach ($lms_subplatforms as $subplatform) {
-
-                if ($subplatform['name'] === $subplatformName) {
-
-                        $targetSubplatform = $subplatform;
-                        break;
-                    
-        }
-            
-    }
-        if (!$targetSubplatform) {
-
-                http_response_code(404);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Sub-platform not found',
-                    'message' => 'The specified sub-platform does not exist.'
-                ]);
-                return;
-            
-    }
-
-        $baseUrl = rtrim($targetSubplatform['url'], '/');
-        
-        // Debug logging - Remove after testing
-        $originalPath = $path;
-        
-        // Remove leading LMS/ from path if baseUrl already ends with /LMS
-        if (substr($baseUrl, -4) === '/LMS' && strpos($path, 'LMS/') === 0) {
-
-                $path = substr($path, 4);
-        // Remove 'LMS/' from the beginning
-                error_log("LMS Ajax Service URL Fix: '$originalPath' -> '$path' for baseUrl: '$baseUrl'");
-            
-    }
-        
-        $targetUrl = $baseUrl . '/' . ltrim($path, '/');
-
-        // Get LMS credentials
-        $credentials = get_platform_credentials($username, 'LMS');
-        if (!$credentials) {
-
-                http_response_code(401);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'LMS credentials not found for user',
-                    'message' => 'LMS credentials not found for this user.'
-                ]);
-                return;
-            
-    }
-
-        // Use consistent cookie file path
-        $host = parse_url($baseUrl, PHP_URL_HOST);
-        $cookieFile = __DIR__ . '/../cookies/' . $username . '_' . $host . '.txt';
-
-        // Create cookies directory if it doesn't exist
-        if (!is_dir(__DIR__ . '/../cookies')) {
-
-                mkdir(__DIR__ . '/../cookies', 0755, true);
-            
-    }
-
-        $logFile = __DIR__ . '/php_errors.log';
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] AJAX Service request: $targetUrl\n", FILE_APPEND);
-
-        // Set up cURL for the AJAX request
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $targetUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HEADER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-
-        // Handle POST data if this is a POST request
-        if ($method === 'POST') {
-
-                curl_setopt($ch, CURLOPT_POST, true);
-            /* PARSED INPUT: Reads raw request body (usually JSON). Validate before using. */
-                $postData = file_get_contents('php://input');
-                if ($postData) {
-
-                        curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-                        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                            'Content-Type: application/x-www-form-urlencoded',
-                            'Content-Length: ' . strlen($postData)
-                        ]);
-                    
-        }
-            
-    }
-
-        // Set appropriate headers for AJAX requests
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge(
-            curl_getinfo($ch, CURLINFO_HEADER_OUT) ? [] : [],
-            [
-                'X-Requested-With: XMLHttpRequest',
-                'Accept: application/json, text/javascript, */*; q=0.01',
-                'Cache-Control: no-cache'
-            ]
-        ));
-
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
-        $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-        curl_close($ch);
-
-        if ($response === false) {
-
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] AJAX Service request failed: " . curl_error($ch) . "\n", FILE_APPEND);
-                http_response_code(500);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode([
-                    'error' => 'Failed to fetch from LMS sub-platform',
-                    'message' => 'The request to the LMS sub-platform failed.'
-                ]);
-                return;
-            
-    }
-
-        // Extract headers and body
-        $headers = substr($response, 0, $headerSize);
-        $body = substr($response, $headerSize);
-
-        // Set appropriate response code
-        http_response_code($httpCode);
-
-        // Forward content type
-        if ($contentType) {
-
-                header('Content-Type: ' . $contentType);
-            
-    }
-
-        // Forward other important headers
-        $headerLines = explode("\r\n", $headers);
-        foreach ($headerLines as $header) {
-
-                if (preg_match('/^(Set-Cookie|Cache-Control|Expires|Last-Modified):/i', $header)) {
-
-                        header($header);
-                    
-        }
-            
-    }
-
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] AJAX Service response: HTTP $httpCode, Content-Type: $contentType\n", FILE_APPEND);
-
-        echo $body;
-}
 
 // =============================================================================
 // DATABASE HELPER FUNCTIONS
@@ -9138,77 +5141,7 @@ function handleLmsAjaxService() {
  * @param string $logFile Path to log file for debugging
  * @return bool True if session is valid, false otherwise
  */
-function validateLmsSession($response, $subplatformName, $logFile) {
 
-        // Check for clear login indicators across all LMS platforms
-        $loginIndicators = [
-            'log in to the site',
-            'you are not logged in',
-            'please log in',
-            'authentication required',
-            'invalid login',
-            'login failed',
-            'session expired',
-            'access denied'
-        ];
-        
-        $responseText = strtolower(strip_tags($response));
-        
-        foreach ($loginIndicators as $indicator) {
-
-                if (strpos($responseText, $indicator) !== false) {
-
-                        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Session invalid for $subplatformName - Found indicator: $indicator\n", FILE_APPEND);
-                        return false;
-                    
-        }
-            
-    }
-        
-        // Check for login forms (indicates not authenticated)
-        if (preg_match('/<form[^>]*[^>]*>/i', $response) && 
-            (strpos($responseText, 'username') !== false || strpos($responseText, 'password') !== false) &&
-            strpos($responseText, 'login') !== false) {
-
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Session invalid for $subplatformName - Found login form\n", FILE_APPEND);
-                return false;
-            
-    }
-        
-        // Check for positive indicators of successful authentication
-        $successIndicators = [
-            'dashboard',
-            'logout',
-            'my courses',
-            'notifications',
-            'user menu',
-            'profile',
-            'settings'
-        ];
-        
-        $hasSuccessIndicator = false;
-        foreach ($successIndicators as $indicator) {
-
-                if (strpos($responseText, $indicator) !== false) {
-
-                        $hasSuccessIndicator = true;
-                        break;
-                    
-        }
-            
-    }
-        
-        if ($hasSuccessIndicator) {
-
-                file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Session valid for $subplatformName - Found success indicators\n", FILE_APPEND);
-                return true;
-            
-    }
-        
-        // If no clear indicators, assume valid but log uncertainty
-        file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] Session status uncertain for $subplatformName - Assuming valid\n", FILE_APPEND);
-        return true;
-}
 
 /**
  * Analyze Leave Portal notification page to find actual endpoints
@@ -9242,7 +5175,7 @@ function analyzeLeavePortalNotificationEndpoints() {
             
     }
         
-        $credentials = get_platform_credentials($username, 'Leave and Absence');
+        $credentials = buildUniversalCredentialsFromRequest($username);
         if (!$credentials) {
 
             /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
@@ -9416,82 +5349,7 @@ function analyzeLeavePortalNotificationEndpoints() {
 /**
  * Extract JavaScript code from Leave Portal notification page for manual analysis
  */
-function getLeavePortalJavaScript() {
 
-        global $method;
-        
-        if ($method !== 'GET') {
-
-                http_response_code(405);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode(['error' => 'Method not allowed']);
-                return;
-            
-    }
-        
-        $username = isset($_GET['username']) ? $_GET['username'] : '';
-        if (!$username) {
-
-                http_response_code(400);
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode(['error' => 'Username is required']);
-                return;
-            
-    }
-        
-        $credentials = get_platform_credentials($username, 'Leave and Absence');
-        if (!$credentials) {
-
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode(['success' => false, 'message' => 'No credentials found']);
-                return;
-            
-    }
-        
-        $cookieFile = __DIR__ . '/../cookies/' . $credentials['platform_username'] . '_LeavePortal.txt';
-        $baseUrl = 'https://leave.final.digital';
-        
-        // Fetch the notifications page
-        $notificationUrl = $baseUrl . '/notifications/all_notifications.php';
-        $ch = curl_init($notificationUrl);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieFile);
-        curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieFile);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        
-        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        
-        if ($httpCode !== 200) {
-
-            /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-                echo json_encode(['success' => false, 'message' => "HTTP $httpCode"]);
-                return;
-            
-    }
-        
-        // Extract all <script> blocks
-        /* PREG MATCHES: Used to extract scripts/event handlers from HTML responses. Ensure patterns are correct and safe. */
-        preg_match_all('/<script[^>]*>(.*?)<\/script>/is', $response, $scriptMatches);
-        $scripts = $scriptMatches[1];
-        
-        // Extract inline event handlers
-        /* PREG MATCHES: Used to extract scripts/event handlers from HTML responses. Ensure patterns are correct and safe. */
-        preg_match_all('/on\w+\s*=\s*[\'"`]([^\'"`]+)[\'"`]/i', $response, $eventMatches);
-        $eventHandlers = $eventMatches[1];
-        
-        /* JSON ENCODING: Ensure UTF-8 and correct headers are set (Content-Type: application/json). */
-        echo json_encode([
-            'success' => true,
-            'javascript_blocks' => $scripts,
-            'event_handlers' => $eventHandlers,
-            'page_url' => $notificationUrl
-        ], JSON_PRETTY_PRINT);
-}
 
 /**
  * Clear notification actions file to reset filtering
@@ -9506,4 +5364,160 @@ function clearNotificationActions() {
         return true;
     }
     return false;
+}
+
+/**
+ * Authenticate to Leave Portal platform - redirects to login page
+ * 
+ * @param array $credentials User credentials
+ * @return array Authentication result
+ */
+function authenticateToLeavePortal($credentials) {
+        $logFile = __DIR__ . '/php_errors.log';
+        $loginUrl = 'https://leave.final.digital/index.php';
+        
+        // Log the redirect attempt
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Leave Portal redirect to login page for user: " . $credentials['platform_username'], FILE_APPEND);
+        
+        // Return success with redirect information instead of attempting authentication
+        return [
+            'success' => true,
+            'message' => 'Redirect to Leave Portal login page',
+            'redirect_required' => true,
+            'login_url' => $loginUrl,
+            'details' => [
+                'action' => 'redirect',
+                'url' => $loginUrl,
+                'platform' => 'Leave and Absence'
+            ]
+        ];
+}
+
+/**
+ * Authenticate to SIS platform (simplified - direct access)
+ * 
+ * @param array $credentials User credentials
+ * @return array Authentication result
+ */
+function authenticateToSIS($credentials) {
+
+        $logFile = __DIR__ . '/php_errors.log';
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS Authentication attempt for user: " . $credentials['platform_username'], FILE_APPEND);
+        
+        // SIS login is on the same base URL
+        $loginUrl = 'https://sis.final.edu.tr/';
+        
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] Trying SIS login URL: $loginUrl", FILE_APPEND);
+        
+        // First, get the login page to extract CAPTCHA if present
+        $ch = curl_init($loginUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_COOKIEJAR, 'sis_cookies.txt');
+    // Save cookies
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        ]);
+
+        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS Login Page Response (HTTP $httpCode) for URL: $loginUrl", FILE_APPEND);
+
+        // Check if CAPTCHA is present in the response
+        $hasCaptcha = (strpos($response, 'captcha') !== false || 
+                       strpos($response, 'recaptcha') !== false ||
+                       strpos($response, 'g-recaptcha') !== false);
+
+        if ($hasCaptcha) {
+
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS has CAPTCHA - returning CAPTCHA required response", FILE_APPEND);
+                return [
+                    'success' => false,
+                    'message' => 'SIS requires CAPTCHA verification',
+                    'captcha_required' => true,
+                    'login_url' => $loginUrl
+                ];
+            
+    }
+
+        // If no CAPTCHA, try to authenticate directly
+        $postData = [
+            'username' => $credentials['platform_username'],
+            'password' => $credentials['platform_password']
+        ];
+
+        $ch = curl_init($loginUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+        curl_setopt($ch, CURLOPT_COOKIEFILE, 'sis_cookies.txt');
+    // Use saved cookies
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/x-www-form-urlencoded',
+            'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        ]);
+
+        /* CURL EXECUTION: This sends HTTP requests to remote LMS endpoints. Ensure SSL verification is enabled and responses are validated. */
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS Auth Response (HTTP $httpCode) for URL: $loginUrl\n" . substr($response, 0, 1000) . "\n", FILE_APPEND);
+        if ($error) {
+
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS cURL Error: $error\n", FILE_APPEND);
+            
+    }
+
+        // Check if authentication was successful
+        if ($httpCode === 200 && (strpos($response, 'dashboard') !== false ||
+            strpos($response, 'welcome') !== false ||
+            strpos($response, 'logout') !== false ||
+            strpos($response, 'success') !== false ||
+            strpos($response, 'Student Information System') !== false)) {
+
+                
+                file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS authentication successful for user: " . $credentials['platform_username'], FILE_APPEND);
+                return [
+                    'success' => true,
+                    'message' => 'SIS authentication successful'
+                ];
+            
+    }
+
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] SIS authentication FAILED for user: " . $credentials['platform_username'] . " (HTTP: $httpCode)", FILE_APPEND);
+        return [
+            'success' => false,
+            'message' => 'SIS authentication failed',
+            'details' => ['http_code' => $httpCode, 'error' => $error]
+        ];
+}
+
+/**
+ * Authenticate to LMS platform (no authentication required)
+ * 
+ * @param array $credentials User credentials
+ * @return array Authentication result
+ */
+function authenticateToLMS($credentials) {
+
+        $logFile = __DIR__ . '/php_errors.log';
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS Authentication attempt for user: " . $credentials['platform_username'], FILE_APPEND);
+        
+        // LMS doesn't need authentication - always return success
+        file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] LMS authentication successful for user: " . $credentials['platform_username'] . " (no authentication required)", FILE_APPEND);
+        return [
+            'success' => true,
+            'message' => 'LMS authentication successful (no authentication required)'
+        ];
 }
