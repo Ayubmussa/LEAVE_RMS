@@ -11,6 +11,8 @@
 // =============================================================================
 // INITIALIZATION & CONFIGURATION
 // =============================================================================
+const API_BASE_URL = 'https://global.fnlsrv.website/LEAVE_RMS/database/api.php';
+const ADMIN_API_BASE_URL = 'https://global.fnlsrv.website/LEAVE_RMS/database/admin_api.php';
 
 document.addEventListener('DOMContentLoaded', function() {
     // DOM element references
@@ -83,17 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loginWithPHPAPI(usernameOrEmail, password) {
         try {
             // 1) Try regular user login first
-            const userResponse = await fetch('http://localhost/LEAVE_RMS/database/api.php?endpoint=login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    username: usernameOrEmail, 
-                    password 
-                })
-            });
-
+            const userResponse = await fetch(`${API_BASE_URL}?endpoint=login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: usernameOrEmail, password }) })
             if (userResponse.ok) {
                 const userData = await userResponse.json();
                 if (userData.success) {
@@ -108,13 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // 2) In background, check if also admin to enable Admin Panel option
                     try {
-                        const adminResponse = await fetch('http://localhost/LEAVE_RMS/database/admin_api.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ username: usernameOrEmail, password })
-                        });
+                        const adminResponse = await fetch(`${ADMIN_API_BASE_URL}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: usernameOrEmail, password }) })
                         if (adminResponse.ok) {
                             const adminData = await adminResponse.json();
                             if (adminData.success) {
@@ -131,13 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // 3) If user login failed, try admin-only login
-            const adminOnlyResponse = await fetch('http://localhost/LEAVE_RMS/database/admin_api.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ username: usernameOrEmail, password })
-            });
+            const adminOnlyResponse = await fetch(`${ADMIN_API_BASE_URL}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: usernameOrEmail, password }) })
 
             if (adminOnlyResponse.ok) {
                 const adminData = await adminOnlyResponse.json();

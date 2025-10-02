@@ -1,3 +1,10 @@
+(function() {
+  const ORIGIN = window.location.origin;
+  // Avoid global collisions; reuse global ADMIN_API_BASE_URL if defined
+  const ADMIN_API = (typeof window !== 'undefined' && window.ADMIN_API_BASE_URL)
+    ? window.ADMIN_API_BASE_URL
+    : `${ORIGIN}/LEAVE_RMS/database/admin_api.php`;
+
 document.addEventListener('DOMContentLoaded', function() {
   const adminBtn = document.getElementById('admin-panel-btn');
   if (!adminBtn) return;
@@ -22,7 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       const user = userRaw ? JSON.parse(userRaw) : null;
       if (user && user.username) {
-        fetch(`../database/admin_api.php?endpoint=admin-by-username&username=${encodeURIComponent(user.username)}`)
+        fetch(`${ADMIN_API}?endpoint=admin-by-username&username=${encodeURIComponent(user.username)}`)
           .then(r => r.json())
           .then(data => {
             if (data && data.success && data.admin) {
@@ -48,5 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.location.href = 'admin-panel.html';
   });
 });
+
+})();
 
 

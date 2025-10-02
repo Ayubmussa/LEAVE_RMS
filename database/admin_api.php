@@ -554,8 +554,9 @@ function handleAnnouncementCreate($input) {
     }
     
     $priority = isset($input['priority']) ? $input['priority'] : 'medium';
+    $target = isset($input['target_audience']) ? $input['target_audience'] : 'all';
     
-    $success = create_announcement($input['title'], $input['content'], $input['current_admin_id'], $priority);
+    $success = create_announcement($input['title'], $input['content'], $input['current_admin_id'], $priority, $target);
     
     if ($success) {
         echo json_encode(['success' => true, 'message' => 'Announcement created successfully']);
@@ -580,8 +581,9 @@ function handleAnnouncementUpdate($input) {
     
     $priority = isset($input['priority']) ? $input['priority'] : 'medium';
     $isActive = isset($input['is_active']) ? $input['is_active'] : true;
+    $target = isset($input['target_audience']) ? $input['target_audience'] : null;
     
-    $success = update_announcement($input['id'], $input['title'], $input['content'], $priority, $isActive);
+    $success = update_announcement($input['id'], $input['title'], $input['content'], $priority, $isActive, $target);
     
     if ($success) {
         echo json_encode(['success' => true, 'message' => 'Announcement updated successfully']);
@@ -619,6 +621,13 @@ function handleAnnouncementDelete($input) {
 // =============================================================================
 
 function handleDiningMenuList() {
+    // Auto-delete past menus before listing
+    try {
+        $today = date('Y-m-d');
+        $deleted = delete_dining_menus_for_past_dates($today);
+    } catch (Throwable $e) {
+        // ignore failures here; listing should still work
+    }
     $menus = get_all_dining_menus();
     echo json_encode([
         'success' => true,

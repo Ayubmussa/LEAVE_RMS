@@ -15,9 +15,9 @@
 
 const DB_CONFIG = [
     'host' => 'localhost',
-    'username' => 'root',
-    'password' => '',
-    'database' => 'leave_rms_db'
+    'username' => 'fnlsszma_fnlsszma',
+    'password' => 'CJ8hW8GlaJWC',
+    'database' => 'fnlsszma_FIU_GLOBAL'
 ];
 
 // =============================================================================
@@ -29,18 +29,29 @@ const DB_CONFIG = [
  * @return mysqli Database connection object
  */
 function createDatabaseConnection() {
-    $conn = new mysqli(
-        DB_CONFIG['host'],
-        DB_CONFIG['username'],
-        DB_CONFIG['password'],
-        DB_CONFIG['database']
-    );
-
-    if ($conn->connect_error) {
-        die("Connection failed: " . $conn->connect_error);
+    // Use strict mysqli error mode so we can catch failures
+    mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+    try {
+        $conn = new mysqli(
+            DB_CONFIG['host'],
+            DB_CONFIG['username'],
+            DB_CONFIG['password'],
+            DB_CONFIG['database']
+        );
+        // Ensure UTF-8 everywhere
+        $conn->set_charset('utf8mb4');
+        return $conn;
+    } catch (Throwable $e) {
+        // Log and return a JSON error response so callers don't get a blank page
+        $logFile = __DIR__ . '/php_errors.log';
+        @file_put_contents($logFile, "\n[" . date('Y-m-d H:i:s') . "] DB connect error: " . $e->getMessage(), FILE_APPEND);
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Database connection error']);
+        exit;
     }
-
-    return $conn;
 }
 
 // Initialize database connection
@@ -185,18 +196,28 @@ function get_platforms() {
  * @return array|false Platform credentials or false if not found
  */
 function get_platform_credentials($username, $platform) {
-    global $conn;
-    
-    $sql = "SELECT * FROM platform_credentials WHERE username = ? AND platform = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ss", $username, $platform);
-    $stmt->execute();
-    
-    $result = $stmt->get_result();
-    $credentials = $result->fetch_assoc();
-    $stmt->close();
-    
-    return $credentials;
+	global $conn;
+	
+	// Fetch credentials from users table instead of platform_credentials
+	$sql = "SELECT username, password FROM users WHERE username = ?";
+	$stmt = $conn->prepare($sql);
+	$stmt->bind_param("s", $username);
+	$stmt->execute();
+	$result = $stmt->get_result();
+	$user = $result->fetch_assoc();
+	$stmt->close();
+	
+	if (!$user) {
+		return false;
+	}
+	
+	// Return in the same shape as old platform_credentials consumers expect
+	return [
+		'username' => $username,
+		'platform' => $platform,
+		'platform_username' => $user['username'],
+		'platform_password' => $user['password']
+	];
 }
 
 /**
@@ -798,8 +819,8 @@ function createTables() {
     
     createUsersTable();
     createPlatformsTable();
-    createNotificationsTable();
-    createPlatformCredentialsTable();
+    dropTableIfExists('notifications');
+    dropTableIfExists('platform_credentials');
     createAdminTable();
     createAnnouncementsTable();
     createDiningMenuTable();
@@ -922,12 +943,15 @@ function createAnnouncementsTable() {
         author_id INT(6) UNSIGNED NOT NULL,
         is_active BOOLEAN DEFAULT TRUE,
         priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
+        target_audience ENUM('students','instructors','all') DEFAULT 'all',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (author_id) REFERENCES admins(id) ON DELETE CASCADE
     )";
     
     $conn->query($sql);
+    // Ensure target_audience column exists in older installations
+    addColumnIfNotExists('announcements', 'target_audience', "ENUM('students','instructors','all') DEFAULT 'all' AFTER priority");
 }
 
 /**
@@ -1002,6 +1026,15 @@ function addColumnIfNotExists($table, $column, $definition) {
     if ($result->num_rows === 0) {
         $conn->query("ALTER TABLE $table ADD COLUMN $column $definition");
     }
+}
+
+/**
+ * Drops a table if it exists (safe operation)
+ * @param string $table Table name
+ */
+function dropTableIfExists($table) {
+    global $conn;
+    $conn->query("DROP TABLE IF EXISTS `$table`");
 }
 
 /**
@@ -1271,12 +1304,12 @@ function get_announcement_by_id($id) {
  * @param string $priority Priority level
  * @return bool Success status
  */
-function create_announcement($title, $content, $author_id, $priority = 'medium') {
+function create_announcement($title, $content, $author_id, $priority = 'medium', $target_audience = 'all') {
     global $conn;
     
-    $sql = "INSERT INTO announcements (title, content, author_id, priority) VALUES (?, ?, ?, ?)";
+    $sql = "INSERT INTO announcements (title, content, author_id, priority, target_audience) VALUES (?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("ssis", $title, $content, $author_id, $priority);
+    $stmt->bind_param("ssiss", $title, $content, $author_id, $priority, $target_audience);
     $result = $stmt->execute();
     $stmt->close();
     
@@ -1292,12 +1325,18 @@ function create_announcement($title, $content, $author_id, $priority = 'medium')
  * @param bool $is_active Active status
  * @return bool Success status
  */
-function update_announcement($id, $title, $content, $priority = 'medium', $is_active = true) {
+function update_announcement($id, $title, $content, $priority = 'medium', $is_active = true, $target_audience = null) {
     global $conn;
     
-    $sql = "UPDATE announcements SET title = ?, content = ?, priority = ?, is_active = ? WHERE id = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sssii", $title, $content, $priority, $is_active, $id);
+    if ($target_audience !== null) {
+        $sql = "UPDATE announcements SET title = ?, content = ?, priority = ?, is_active = ?, target_audience = ? WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("sssisi", $title, $content, $priority, $is_active, $target_audience, $id);
+    } else {
+        $sql = "UPDATE announcements SET title = ?, content = ?, priority = ?, is_active = ? WHERE id = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("sssii", $title, $content, $priority, $is_active, $id);
+    }
     $result = $stmt->execute();
     $stmt->close();
     
@@ -1990,6 +2029,23 @@ function delete_dining_menus_for_dates($dates) {
     $stmt->close();
     
     return $affectedRows;
+}
+
+/**
+ * Deletes dining menus strictly before a cutoff date (YYYY-MM-DD)
+ * @param string $cutoffDate
+ * @return int Number of deleted entries
+ */
+function delete_dining_menus_for_past_dates($cutoffDate) {
+    global $conn;
+    $sql = "DELETE FROM dining_menu WHERE date < ?";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) { return 0; }
+    $stmt->bind_param("s", $cutoffDate);
+    $stmt->execute();
+    $affected = $stmt->affected_rows;
+    $stmt->close();
+    return $affected;
 }
 
 /**

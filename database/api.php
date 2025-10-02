@@ -270,10 +270,12 @@ $lms_subplatforms = [
 ];
 
 // Set headers for JSON response
-header('Content-Type: application/json');
+header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
 
 // =============================================================================
 // ENHANCED PROXY FUNCTIONS FOR PERFECT PORTAL DISPLAY
@@ -330,10 +332,8 @@ else {
 
         // Handle preflight requests
         if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-
-                http_response_code(200);
+                http_response_code(204);
                 exit();
-            
     }
 
         // Get request method and endpoint

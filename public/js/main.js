@@ -12,7 +12,7 @@
 // CONSTANTS & CONFIGURATION
 // =============================================================================
 
-const API_BASE_URL = 'http://localhost/LEAVE_RMS/database/api.php';
+const API_BASE_URL = 'https://global.fnlsrv.website/LEAVE_RMS/database/api.php';
 const SIS_URL = 'https://sis.final.edu.tr/';
 
 // =============================================================================
@@ -440,8 +440,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateGreeting() {
         const user = getUserFromStorage();
         if (elements.usernameElement && user) {
-            const roleSuffix = user.role ? ` (${user.role})` : '';
-            elements.usernameElement.textContent = `${getTranslation('welcome-user')}${user.username || 'User'}${roleSuffix}`;
+            elements.usernameElement.textContent = `${getTranslation('welcome-user')}${user.username || 'User'}`;
         }
     }
 
@@ -946,12 +945,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Announcements data received:', data);
                 if (data.success && data.announcements && data.announcements.length > 0) {
                     console.log('Creating announcement slides for:', data.announcements.length, 'announcements');
-                    
-                    announcementsState.slides = data.announcements;
-                    announcementsState.totalSlides = data.announcements.length;
+                    // Filter announcements by target audience based on user role
+                    const user = getUserFromStorage();
+                    const role = (user && user.role) ? String(user.role).toLowerCase().trim() : 'instructor';
+                    const filtered = data.announcements.filter(a => {
+                        const target = (a.target_audience || 'all').toLowerCase();
+                        if (target === 'all') return true;
+                        if (target === 'students') return role === 'student';
+                        if (target === 'instructors') return role !== 'student';
+                        return true;
+                    });
+
+                    announcementsState.slides = filtered;
+                    announcementsState.totalSlides = filtered.length;
                     announcementsState.currentSlide = 0;
 
-                    data.announcements.forEach((announcement, index) => {
+                    filtered.forEach((announcement, index) => {
                         const slideDiv = document.createElement('div');
                         slideDiv.className = 'announcements-slide';
                         createAnnouncementCard(announcement, slideDiv);
@@ -1363,14 +1372,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (notification.platform === 'RMS' && user && user.username) {
             notificationUrl = `rms_auth_bridge.php?username=${encodeURIComponent(user.username)}&type=notifications&page=Dashboard/notifications.php`;
-        } else if (notification.platform === 'Leave and Absence' && user && user.username) {
-            // Use bridge authentication for Leave Portal notifications
-            notificationUrl = `rms_auth_bridge.php?username=${encodeURIComponent(user.username)}&type=notifications&page=notifications/all_notifications.php&platform=leave`;
-                         } else if (notification.platform === 'LMS' && user && user.username) {
-                     // Use server-side direct link for LMS notifications
-                             const subplatformName = notification.subplatform || 'Unknown';
-                             notificationUrl = `${API_BASE_URL}?endpoint=lms_subplatform_direct_link&username=${encodeURIComponent(user.username)}&subplatform=${encodeURIComponent(subplatformName)}`;
-                         }
+        } else if (notification.platform === 'Leave and Absence') {
+            // Open Leave Portal notifications directly; portal will prompt login if needed
+            notificationUrl = 'https://leave.final.digital/notifications/all_notifications.php';
+        } else if (notification.platform === 'LMS' && user && user.username) {
+            // Use server-side direct link for LMS notifications
+            const subplatformName = notification.subplatform || 'Unknown';
+            notificationUrl = `${API_BASE_URL}?endpoint=lms_subplatform_direct_link&username=${encodeURIComponent(user.username)}&subplatform=${encodeURIComponent(subplatformName)}`;
+        }
         
         return notificationUrl;
     }

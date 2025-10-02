@@ -1,5 +1,6 @@
 // Admin Panel JavaScript Functions
 console.log('admin.js script loaded');
+const ADMIN_API_BASE_URL = 'https://global.fnlsrv.website/LEAVE_RMS/database/admin_api.php';
 
 class AdminPanel {
     constructor() {
@@ -125,12 +126,14 @@ class AdminPanel {
         }
 
         // Announcement form submission
-        const announcementForm = document.getElementById('announcement-form');
+            const announcementForm = document.getElementById('announcement-form');
         if (announcementForm) {
             announcementForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 const formData = new FormData(announcementForm);
                 const data = Object.fromEntries(formData.entries());
+                    // Normalize target_audience; default to 'all'
+                    data.target_audience = (data.target_audience || 'all').toLowerCase();
                 this.saveAnnouncement(data);
             });
         }
@@ -482,7 +485,7 @@ class AdminPanel {
 
     async loadDashboardStats() {
         try {
-            const response = await fetch('../database/admin_api.php?endpoint=dashboard-stats');
+            const response = await fetch(`${ADMIN_API_BASE_URL}?endpoint=dashboard-stats`);
             const data = await response.json();
             
             if (data.success) {
@@ -550,7 +553,7 @@ class AdminPanel {
 
     async loadAdmins() {
         try {
-            const response = await fetch(`../database/admin_api.php?endpoint=admin-list&current_admin_id=${this.currentAdmin.id}`);
+            const response = await fetch(`${ADMIN_API_BASE_URL}?endpoint=admin-list&current_admin_id=${this.currentAdmin.id}`);
             const data = await response.json();
             
             if (data.success) {
@@ -597,7 +600,7 @@ class AdminPanel {
             // Add current admin ID to the request
             formData.current_admin_id = this.currentAdmin.id;
             
-            const response = await fetch('../database/admin_api.php', {
+            const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -628,7 +631,7 @@ class AdminPanel {
             // Add current admin ID to the request
             formData.current_admin_id = this.currentAdmin.id;
             
-            const response = await fetch('../database/admin_api.php', {
+            const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -656,7 +659,7 @@ class AdminPanel {
     async deleteAdmin(adminId) {
         if (confirm('Are you sure you want to delete this admin?')) {
             try {
-                const response = await fetch('../database/admin_api.php', {
+                const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -729,7 +732,7 @@ class AdminPanel {
 
     async loadAnnouncements() {
         try {
-            const response = await fetch('../database/admin_api.php?endpoint=announcement-list');
+            const response = await fetch(`${ADMIN_API_BASE_URL}?endpoint=announcement-list`);
             const data = await response.json();
             
             if (data.success) {
@@ -749,7 +752,7 @@ class AdminPanel {
 
     async loadUsers() {
         try {
-            const response = await fetch('../database/admin_api.php?endpoint=users-list');
+            const response = await fetch(`${ADMIN_API_BASE_URL}?endpoint=users-list`);
             const data = await response.json();
             if (data.success) {
                 this.renderUsers(data.users);
@@ -793,7 +796,7 @@ class AdminPanel {
     async promoteToAdmin(username) {
         if (!confirm(`Promote ${username} to admin?`)) return;
         try {
-            const response = await fetch('../database/admin_api.php', {
+            const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -820,7 +823,7 @@ class AdminPanel {
     async demoteToUser(username) {
         if (!confirm(`Demote ${username} to normal user?`)) return;
         try {
-            const response = await fetch('../database/admin_api.php', {
+            const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -845,7 +848,7 @@ class AdminPanel {
 
     async loadPlatforms() {
         try {
-            const response = await fetch('../database/admin_api.php?endpoint=platforms-list');
+            const response = await fetch(`${ADMIN_API_BASE_URL}?endpoint=platforms-list`);
             const data = await response.json();
             if (data.success) {
                 this.renderPlatforms(data.platforms);
@@ -925,6 +928,9 @@ class AdminPanel {
         document.getElementById('announcement-title').value = announcement.title;
         document.getElementById('announcement-content').value = announcement.content;
         document.getElementById('announcement-priority').value = announcement.priority;
+        if (document.getElementById('announcement-target')) {
+            document.getElementById('announcement-target').value = (announcement.target_audience || 'all');
+        }
         document.getElementById('announcement-status').value = announcement.is_active;
         
         // Show status field for editing
@@ -945,7 +951,7 @@ class AdminPanel {
     async deleteAnnouncement(announcementId) {
         if (confirm('Are you sure you want to delete this announcement?')) {
             try {
-                const response = await fetch('../database/admin_api.php', {
+                const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -981,7 +987,7 @@ class AdminPanel {
                 formData.id = this.editingAnnouncementId;
             }
             
-            const response = await fetch('../database/admin_api.php', {
+            const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1013,7 +1019,7 @@ class AdminPanel {
 
     async loadDiningMenus() {
         try {
-            const response = await fetch('../database/admin_api.php?endpoint=dining-menu-list');
+            const response = await fetch(`${ADMIN_API_BASE_URL}?endpoint=dining-menu-list`);
             const data = await response.json();
             
             if (data.success) {
@@ -1116,7 +1122,7 @@ class AdminPanel {
                 const selectedDate = dateInput.value;
                 if (selectedDate) {
                     try {
-                        const response = await fetch(`../database/admin_api.php?endpoint=check-date-availability&date=${selectedDate}`);
+                        const response = await fetch(`${ADMIN_API_BASE_URL}?endpoint=check-date-availability&date=${selectedDate}`);
                         const data = await response.json();
                         
                         if (!data.available) {
@@ -1160,7 +1166,7 @@ class AdminPanel {
     async deleteDiningMenu(menuId) {
         if (confirm('Are you sure you want to delete this dining menu?')) {
             try {
-                const response = await fetch('../database/admin_api.php', {
+                const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1360,7 +1366,7 @@ class AdminPanel {
             // Auto-update to current year - static within session but updates yearly
             const year = new Date().getFullYear();
             console.log('Loading holidays for year:', year);
-            const response = await fetch(`../database/admin_api.php?endpoint=holiday-list&year=${year}`);
+            const response = await fetch(`${ADMIN_API_BASE_URL}?endpoint=holiday-list&year=${year}`);
             const data = await response.json();
             
             if (data.success) {
@@ -1466,7 +1472,7 @@ class AdminPanel {
     async deleteHoliday(holidayId) {
         if (confirm('Are you sure you want to delete this holiday?')) {
             try {
-                const response = await fetch('../database/admin_api.php', {
+                const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1502,7 +1508,7 @@ class AdminPanel {
                 formData.id = this.editingHolidayId;
             }
             
-            const response = await fetch('../database/admin_api.php', {
+            const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1560,7 +1566,7 @@ class AdminPanel {
                 console.log(key + ': ' + value);
             }
             
-            const response = await fetch('../database/admin_api.php', {
+            const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                 method: 'POST',
                 body: formData
             });
@@ -1591,7 +1597,7 @@ class AdminPanel {
         try {
             // Auto-update to current year - static within session but updates yearly
             const year = new Date().getFullYear();
-            window.open(`../database/admin_api.php?endpoint=holiday-export&year=${year}`, '_blank');
+            window.open(`${ADMIN_API_BASE_URL}?endpoint=holiday-export&year=${year}`, '_blank');
         } catch (error) {
             console.error('Error exporting holidays:', error);
             this.showNotification('Error exporting holidays', 'error');
@@ -1602,7 +1608,7 @@ class AdminPanel {
         try {
             // Auto-update to current year - static within session but updates yearly
             const year = new Date().getFullYear();
-            window.open(`../database/admin_api.php?endpoint=holiday-template&year=${year}`, '_blank');
+            window.open(`${ADMIN_API_BASE_URL}?endpoint=holiday-template&year=${year}`, '_blank');
         } catch (error) {
             console.error('Error downloading template:', error);
             this.showNotification('Error downloading template', 'error');
@@ -1614,7 +1620,7 @@ class AdminPanel {
         const year = new Date().getFullYear();
         if (confirm(`Are you sure you want to delete ALL holidays for ${year}? This action cannot be undone.`)) {
             try {
-                const response = await fetch('../database/admin_api.php', {
+                const response = await fetch(`${ADMIN_API_BASE_URL}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
